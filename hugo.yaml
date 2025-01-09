@@ -30,7 +30,7 @@ menu:
       url: /index.xml
       weight: 6
 params:
-  # abbrDateFmt: "Jan 2"
+  abbrDateFmt: "Jan 2"
   author: "REinject"
   dateFmt: "2006-01-02"
   ##
