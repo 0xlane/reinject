@@ -1,6 +1,6 @@
 # exampleSite/config.yaml
 baseURL: https://reinject.top/ # Replace with your domain
-languageCode: en-us
+languageCode: zh-cn
 theme: smol
 title: REinject's Blog
 enableRobotsTXT: true
@@ -33,6 +33,22 @@ menu:
 params:
   abbrDateFmt: "Jan 2"
   author: "REinject"
+  description: "REinject 的博客，主要用于记录计算机网络安全相关的内容，侧重于主机侧、二进制、安全工具开发方面。"
+  keywords:
+    - 网络安全
+    - CTF
+    - Windows安全
+    - 安全博客
+    - 二进制安全
+    - 安全研究
+    - 主机安全
+    - 入侵检测
+    - 漏洞分析
+    - 攻防对抗
+    - 安全知识
+    - 安全技术
+    - 漏洞文档
+    - 漏洞复现
   dateFmt: "2006-01-02"
   ##
   ## Options for overriding theme or page defaults
