@@ -1,0 +1,65 @@
+# exampleSite/config.yaml
+baseURL: http://localhost/ # Replace with your domain
+languageCode: en-us
+theme: smol
+title: REinject's Blog
+menu:
+  main: # Change menu as needed
+    - identifier: home
+      name: Home
+      url: /
+      weight: 1
+    - identifier: about
+      name: About
+      url: /about/
+      weight: 2
+    - identifier: posts
+      name: Posts
+      url: /posts/
+      weight: 3
+    - identifier: categories
+      name: Categories
+      url: /categories/
+      weight: 4
+    - identifier: tags
+      name: Tags
+      url: /tags/
+      weight: 5
+    - identifier: rss
+      name: RSS
+      url: /index.xml
+      weight: 6
+params:
+  # abbrDateFmt: "Jan 2"
+  author: "REinject"
+  dateFmt: "2006-01-02"
+  ##
+  ## Options for overriding theme or page defaults
+  ##
+  #customStylesheets: # Use to override theme styles, like logo size
+  #  - "css/custom.css"
+  #readingSpeed: 600 # Use to set custom reading speed
+  #readingSpeedMin: 25 # Use to set custom reading speed range
+  #readingSpeedMax: 175 # Use to set custom reading speed range
+  social:
+    - name: GitHub
+      url: https://github.com/ian-s-mcb
+    - name: GitLab
+      url: https://gitlab.com/ian-s-mcb
+    - name: Quizlet
+      url: https://quizlet.com/ian-s-mcb
+    - name: Reddit
+      url: https://www.reddit.com/user/ian-s-mcb
+    - name: StackOverflow
+      url: https://stackoverflow.com/users/3417846/ian-s-mcb
+  subtitle: "我们功夫再好，也敌不过洋枪"
+# permalinks:
+#   page:
+#     posts: "/:sections/:slug/"
+#   section:
+#     posts: "/:sections"
+markup:
+  tableOfContents:
+    endLevel: 3
+    ordered: false
+    startLevel: 2
