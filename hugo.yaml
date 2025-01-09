@@ -3,6 +3,7 @@ baseURL: https://reinject.top/ # Replace with your domain
 languageCode: en-us
 theme: smol
 title: REinject's Blog
+enableRobotsTXT: true
 menu:
   main: # Change menu as needed
     - identifier: home
