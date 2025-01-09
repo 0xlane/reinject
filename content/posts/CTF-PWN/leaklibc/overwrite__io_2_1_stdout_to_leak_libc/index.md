@@ -13,7 +13,6 @@ tags:
   - _io_2_1_stdout
 ---
 
-
 PWN 类型的题基本上都需要用到 libc 的地址，一般情况可以通过获取程序 GOT 表填充的 libc API 地址通过相对偏移计算出 libc 基址。但是也有时候没办法直接读 GOT，这时候如果可以实现任意位置写，那通过覆盖 `_IO_2_1_stdout` 的方式就可以泄漏 libc 地址。
 
 操作上比较简单，直接把 `_IO_2_1_stdout` 结构开头的 `flag` 置为 `0x00000000fbad1800`，并将 `_IO_write_base` 低字节位改小，然后等着程序调用 `puts`、 `printf` 函数即可将 libc 地址泄漏到标准输出里。
@@ -433,4 +432,3 @@ b'DV\x0e\xed\xe0\x7f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
 相关题目：
 
 - [ezheap2](../../writeup/chb2024/ezheap2)
-

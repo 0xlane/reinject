@@ -1,3 +1,3 @@
 ---
-Title: writeup
+title: writeup
 ---

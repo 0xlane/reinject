@@ -4,6 +4,9 @@ languageCode: zh-cn
 theme: smol
 title: REinject's Blog
 enableRobotsTXT: true
+outputFormats:
+  RSS:
+    baseName: "rss"
 menu:
   main: # Change menu as needed
     - identifier: home
@@ -28,7 +31,7 @@ menu:
       weight: 5
     - identifier: rss
       name: RSS
-      url: /index.xml
+      url: /rss.xml
       weight: 6
 params:
   abbrDateFmt: "Jan 2"

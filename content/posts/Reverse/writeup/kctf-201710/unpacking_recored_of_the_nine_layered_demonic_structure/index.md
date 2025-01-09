@@ -15,11 +15,9 @@ tags:
 
 ## 题目介绍
 
-这是看雪.TSRC 2017CTF秋季赛的 第九题 九重妖塔：
+这是看雪.TSRC 2017CTF秋季赛的 第九题 九重妖塔：[题目链接](https://ctf.kanxue.com/game-fight-53.htm)
 
 exe文件的md5：b8b6bfe47a9c40117e2c6bbd5839f198
-
-[题目链接](https://ctf.kanxue.com/game-fight-53.htm)
 
 <!--more-->
 
