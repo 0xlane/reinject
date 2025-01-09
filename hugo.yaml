@@ -49,6 +49,8 @@ params:
       url: https://bbs.kanxue.com/homepage-860174.htm
     - name: Telegram
       url: https://t.me/stayupgogo
+    - name: Vercel
+      url: https://reinject.vercel.app
   subtitle: "我们的功夫再棒，也敌不过洋枪"
 # permalinks:
 #   page:
