@@ -78,6 +78,7 @@ params:
     repo: "reinject"
     owner: "0xlane"
     admin: "0xlane"
+    proxy: "https://cors-server-reinject.netlify.app/github_access_token"
 # permalinks:
 #   page:
 #     posts: "/:sections/:slug/"
