@@ -89,3 +89,8 @@ markup:
     endLevel: 3
     ordered: false
     startLevel: 2
+  goldmark:
+    renderer:
+      hardWraps: false
+      unsafe: false   # embbed html in markdown
+      xhtml: false
