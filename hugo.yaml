@@ -90,6 +90,7 @@ params:
     repo: "0xlane/reinject"
     repoID: "R_kgDONn--4w"
     categoryID: "DIC_kwDONn--484Cl9Xl"
+    lazyLoading: false
   seo:
     baidutj: "bf3cc055e01402c796d585fb74bf2359"
     googleanalytics: "G-ZKRK5Y0WYJ"
