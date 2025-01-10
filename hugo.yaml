@@ -77,6 +77,7 @@ params:
     - name: Vercel
       url: https://reinject.vercel.app
   subtitle: "我们的功夫再棒，也敌不过洋枪"
+  feedback: true
   gitalk:
     enable: false
     clientID: "Ov23li2OYAeqgxWlyI0m"
