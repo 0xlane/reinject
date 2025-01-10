@@ -91,6 +91,7 @@ params:
     repoID: "R_kgDONn--4w"
     categoryID: "DIC_kwDONn--484Cl9Xl"
     lazyLoading: false
+    reactionsEnabled: 1
   seo:
     baidutj: "bf3cc055e01402c796d585fb74bf2359"
     googleanalytics: "G-ZKRK5Y0WYJ"
