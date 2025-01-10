@@ -71,6 +71,13 @@ params:
     - name: Vercel
       url: https://reinject.vercel.app
   subtitle: "我们的功夫再棒，也敌不过洋枪"
+  gitalk:
+    enable: true
+    clientID: "Ov23li2OYAeqgxWlyI0m"
+    clientSecret: "ec6e5a63872a31e3e7d5510549d0da47517d5e1a"
+    repo: "reinject"
+    owner: "0xlane"
+    admin: "0xlane"
 # permalinks:
 #   page:
 #     posts: "/:sections/:slug/"
