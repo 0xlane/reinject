@@ -1,6 +1,6 @@
 ---
 title: "GDB Cheatsheet"
-date: 2025-01-07
+date: 2024-12-07
 type: posts
 draft: false
 summary: "总结一下常用的 GDB 命令。"

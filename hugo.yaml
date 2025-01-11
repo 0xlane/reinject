@@ -97,3 +97,14 @@ markup:
       hardWraps: false
       unsafe: false   # embbed html in markdown
       xhtml: false
+  highlight:
+    anchorLineNos: false
+    codeFences: true
+    guessSyntax: false
+    lineAnchors: ""
+    lineNoStart: 1
+    lineNumbersInTable: true
+    noClasses: true
+    noHl: false
+    style: dracula
+    tabWidth: 4

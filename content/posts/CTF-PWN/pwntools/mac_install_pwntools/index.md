@@ -1,6 +1,6 @@
 ---
 title: "Mac 安装 pwntools"
-date: 2025-01-07
+date: 2024-12-20
 type: posts
 draft: false
 summary: "在 Mac 上安装 pwntools 报错了，应该都会遇到吧。"

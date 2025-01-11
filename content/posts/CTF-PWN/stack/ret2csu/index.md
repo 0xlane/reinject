@@ -37,5 +37,5 @@ print(hex(next(elf.search(asm('pop rdi\nret'), executable=True))))
 
 相关题目：
 
-- [asadstory](../writeup/DASCTF-challenge-202311/asadstory/)
-- [Inequable_Canary](../writeup/chb2024/Inequable_Canary/)
+- [asadstory](../../writeup/DASCTF-challenge-202311/asadstory/)
+- [Inequable_Canary](../../writeup/chb2024/Inequable_Canary/)
