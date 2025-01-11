@@ -109,7 +109,7 @@ typedef struct _heap_info
 
 每个线程的堆内存是逻辑上互相独立的，每个堆都关联一个 arena，主线程的 arena 称为 main_arena，子线程的 arena 称为 thread_arena。
 
-[a](https://github.com/bminor/glibc/blob/glibc-2.27/include/malloc.h#L15)rena 是一个指向 [malloc_state](https://github.com/bminor/glibc/blob/glibc-2.27/malloc/malloc.c#L1674) 结构的指针：
+[arena](https://github.com/bminor/glibc/blob/glibc-2.27/include/malloc.h#L15) 是一个指向 [malloc_state](https://github.com/bminor/glibc/blob/glibc-2.27/malloc/malloc.c#L1674) 结构的指针：
 
 ```cpp
 /*
