@@ -10,26 +10,32 @@ outputFormats:
 menu:
   main: # Change menu as needed
     - identifier: home
+      pre: icon-home
       name: Home
       url: /
       weight: 1
     - identifier: about
+      pre: icon-about
       name: About
       url: /about/
       weight: 2
     - identifier: posts
+      pre: icon-post
       name: Posts
       url: /posts/
       weight: 3
     - identifier: categories
+      pre: icon-category
       name: Categories
       url: /categories/
       weight: 4
     - identifier: tags
+      pre: icon-tag
       name: Tags
       url: /tags/
       weight: 5
     - identifier: rss
+      pre: icon-rss
       name: RSS
       url: /rss.xml
       weight: 6
