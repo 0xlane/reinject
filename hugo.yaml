@@ -88,6 +88,7 @@ params:
   seo:
     baidutj: "bf3cc055e01402c796d585fb74bf2359"
     googleanalytics: "G-ZKRK5Y0WYJ"
+  brandIconFile: "images/lixiaolong.svg"
 # permalinks:
 #   page:
 #     posts: "/:sections/:slug/"
