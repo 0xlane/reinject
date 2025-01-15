@@ -39,6 +39,11 @@ menu:
       name: RSS
       url: /rss.xml
       weight: 6
+    - identifier: search
+      pre: "&#xf002;"
+      name: Search
+      url: /search/
+      weight: 7
 params:
   abbrDateFmt: "Jan 2"
   author: "REinject"
