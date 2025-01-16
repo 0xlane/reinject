@@ -681,6 +681,10 @@ idx     chunk_size
 
 对于暂时未归类到 smallbins 或 largebins 的 chunk，暂时放到 unsortedbin 里，位于 bin1 位置，不需要按大小排序。
 
+刚释放的 chunk 不会立刻进行归类，会先放到 unsortedbin 上。
+
+等下次调用 malloc 分配内存时，当 tcache、fastbins、smallbins 没有相同大小（exact-fit）的 chunk 时，就会对 unsortedbin 归类。
+
 ## 内存分配
 
 程序调用 glibc 分配内存的入口为 [__libc_malloc](https://github.com/bminor/glibc/blob/glibc-2.27/malloc/malloc.c#L3027)。
@@ -958,7 +962,7 @@ _int_free (mstate av, mchunkptr p, int have_lock)
 
 释放：将 mmap 临时内存 chunk 直接释放，其他 chunk 不会被立即释放，按 tcache(64) > fastbins(10) > unsortedbin(1) 的优先级存入作为空闲 chunk，进入到 unsortedbin 之前要先进行合并操作。
 
-分配：如果没有 arena 直接分配 mmap 临时内存 chunk，否则按 tcache(64) > fastbins(10) > smallbins(62) > unsortedbin(1) > largebins > topchunk 的优先级寻找合适大小的空闲 chunk，优先寻找相同大小的 chunk，如果没有大小正合适的 chunk 就从大小最接近的 chunk 上分隔出一块，topchunk 负责兜底，topchunk 也没办法就做系统调用扩展 topchunk 后再划分一块给程序。
+分配：如果没有 arena 直接分配 mmap 临时内存 chunk，否则按 tcache(64) > fastbins(10) > smallbins(62) > unsortedbin(1) > largebins > topchunk 的优先级寻找合适大小的空闲 chunk，优先寻找相同大小的 chunk，如果没有大小正合适（exact-fit）的 chunk 就从大小最接近的 chunk 上分隔出一块，topchunk 负责兜底，topchunk 也没办法就做系统调用扩展 topchunk 后再划分一块给程序。
 
 几个重要点：
 
