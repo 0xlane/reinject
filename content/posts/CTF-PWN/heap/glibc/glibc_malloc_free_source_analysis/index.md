@@ -465,6 +465,12 @@ bin 中的 chunk 按大小排序，相同大小的 chunk 按 FIFO t先进先出�
 
 一共 128 个 bin，没有 bin0，bin1 是 unsorted bin，bin2~63 是 smallbins，bin64 开始是 largebins 范围。
 
+#### bin 链表结构
+
+所有的 bin 都是这个结构：
+
+![bin_link_struct](bin_link_struct.png)
+
 #### smallbins
 
 glibc 使用 [in_smallbin_range](https://github.com/bminor/glibc/blob/glibc-2.27/malloc/malloc.c#L1466) 判断 chunk 大小是否在 smallbins 范围：
@@ -918,7 +924,7 @@ _int_free (mstate av, mchunkptr p, int have_lock)
 
 如果 chunk 满足存入 tcache 的条件，则将 chunk 存入 tcache 中，完成释放。
 
-如果chunk 满足存入 fastbins 的条件，则将 chunk 存入 fastbins 中。
+如果 chunk 满足存入 fastbins 的条件，则将 chunk 存入 fastbins 中。
 
 如果不能存入 fastbins，将 `IS_MMAPPED` 标记位为 1 的 chunk 释放归还给系统，否则对 chunk 物理连续的前后空闲 chunk 进行合并。
 
