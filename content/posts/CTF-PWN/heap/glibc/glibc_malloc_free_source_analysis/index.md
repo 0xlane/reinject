@@ -347,6 +347,11 @@ chunk 进入 tcache 的时机：
 - 内存申请
   - 当在 fastbins 中找到合适的 chunk 时，将这个 chunk 所在 bin  的其他 chunk 放入 tcache
   - 当在 smallbins  中找到合适的 chunk 时，将这个 chunk 所在 bin 的其他 chunk 放入 tcache
+- 内存释放
+  - 大小符合，直接插入 tcache
+
+
+被插入 tcache 的 chunk，也不会进行任何合并操作。
 
 ### fastbins
 

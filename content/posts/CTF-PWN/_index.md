@@ -16,6 +16,8 @@ linux syscall 列表：[https://linasm.sourceforge.net/docs/syscalls/filesystem.
 - 堆利用
   - [glibc](heap/glibc/)
     - [glibc malloc/free 源码分析](heap/glibc/glibc_malloc_free_source_analysis)
+    - [unsortedbin 攻击利用](heap/glibc/unsortedbin_attack/)
+    - [largebin 攻击利用](heap/glibc/largebin_attack/)
 - 栈利用
   - [从shellcode学习到缓冲区溢出实战](stack/from_shellcode_to_buffer_overflow_practical_experience)
   - [ret2csu](stack/ret2csu)
