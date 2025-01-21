@@ -422,4 +422,4 @@ int main()
 
 ![exp2_fix_commit](exp2_fix_commit.png)
 
-所以这种方式在 2.30 之后失效，只能用第 1 种方式。
+所以这种方式在 2.30 之后失效，只能用第 1 种方式。使用不同 glibc 版本的编译程序可以简单参考一下 [glibc_all_in_one](../glibc_all_in_one/) 。
