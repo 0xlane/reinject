@@ -14,7 +14,7 @@ tags:
   - heap
 ---
 
-本文内容在 [unsortedbin attack] 中总结过，单独拉出来整理一下。
+本文内容在 [unsortedbin attack](../unsortedbin_attack/) 中总结过，单独拉出来整理一下。
 
 当 chunk 从 unsortedbin 放到 largebin 中时，存在两种利用方式使得修改任意指针内容为 chunk 的地址。
 
