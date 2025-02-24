@@ -1,6 +1,7 @@
 ---
 title: "Typora 1.9.5 破解"
 date: 2025-01-14
+lastmod: 2025-02-24T11:02:51+08:00
 type: posts
 draft: false
 hidden: true
@@ -19,19 +20,26 @@ keywords:
 
 1. 找到原始的 `app.asar` 解包
 
-   直接将 `app.asar` 拖到 vscode 里打开，或通过下面的方式：
+   解包有三种方式：
 
-   ```bash
-   apt install nodejs
-   npm install -g asar
-   asar e ./app.asar ./app.asar.unpacked
-   ```
+   1. 直接将 `app.asar` 拖到 vscode 里打开，这种方式无需 node.js 环境不能重新打包
 
-   如果解包时报 `main.node` 打不开的报错，就从 typora 目录里复制一份放到报错中提到的对应位置。
+   2. 利用 7-zip asar 插件，从 [这里](https://www.tc4shell.com/en/7zip/asar/) 下载插件，放到 7-zip 安装目录下的 Formats 目录里，然后使用 7-zip 打开 `app.asar`，这种方式无需 node.js 环境并且可以修改 asar 内的文件，推荐使用
 
-   解包成功的话不算 `main.node` ，解出 2 个文件：`atom.js` 和 `package.json`。
+      ![7-zip_asar_plugin](7-zip_asar_plugin.png)
 
-   `atom.js` 是 AES 加密的 base64 密文，需要对 `atom.js` 解密。
+   3. 安装 `node.js` 环境，使用 asar 工具完成
+
+       ```bash
+       apt install nodejs
+       npm install -g asar
+       asar e ./app.asar ./app.asar.unpacked
+       ```
+
+       如果解包时报 `main.node` 打不开的报错，就从 typora 目录里复制一份放到报错中提到的对应位置。
+
+
+   最终可以解出 2 个文件：`atom.js` 和 `package.json`，`atom.js` 是 AES 加密的 base64 密文，需要对 `atom.js` 解密。
 
 2. 解密 `atom.js`
 
