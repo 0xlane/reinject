@@ -53,6 +53,9 @@ blockquote p:last-child { margin-bottom: 0; }
 .callout-content p:first-of-type { margin-top: 0.3em; }
 .callout-content p:last-child { margin-bottom: 0; }
 .callout-content table { margin-bottom: 0; }
+.callout-content table td:first-child { white-space: nowrap; }
+
+article .content table td { text-align: left; }
 .callout-label {
   font-size: 0.8em;
   letter-spacing: 0.05em;
