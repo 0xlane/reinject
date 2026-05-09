@@ -1,5 +1,6 @@
 <head>
   <meta charset="utf-8" />
+  <script src="{{ "js/lang-detect.js" | relURL }}"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   {{- $kw := slice -}}
   {{- with .Params.tags }}{{ $kw = . }}{{ else }}{{ with $.Site.Params.keywords }}{{ $kw = . }}{{ end }}{{ end -}}
