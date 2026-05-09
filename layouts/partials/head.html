@@ -1,0 +1,57 @@
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {{- $kw := slice -}}
+  {{- with .Params.tags }}{{ $kw = . }}{{ else }}{{ with $.Site.Params.keywords }}{{ $kw = . }}{{ end }}{{ end -}}
+  {{- with .Params.keywords }}{{ $kw = $kw | append . }}{{ end -}}
+  {{- $kw = $kw | uniq -}}
+  <meta name="keywords" content="{{ delimit $kw ", " }}" />
+  <meta name="description" content="{{ if .Params.Description }}{{ .Params.Description }}{{ else if .Site.Params.Description }}{{ .Site.Params.Description }}{{ else }}{{ .Title }}{{ end }}" />
+  {{ if (eq .Title .Site.Title) }}
+    {{ with $title := .Title }}
+      <title>{{ . }}</title>
+    {{ end }}
+  {{ else }}
+    {{ with $title := printf "%s | %s" .Title .Site.Title }}
+      <title>{{ . }}</title>
+    {{ end }}
+  {{ end }}
+  <link rel="stylesheet" href="{{ "fonts/iconfont/iconfont.css" | relURL }}"/>
+  <link rel="stylesheet" href="{{ "fonts/symbols-nerd-font/symbols-nerd-font.css" | relURL }}"/>
+  <link rel="stylesheet" href="{{ "fonts/jetbrains-mono/jetbrains-mono.css" | relURL }}" />
+  <link rel="stylesheet" href="{{ "fonts/BlinkMacSystemFont/BlinkMacSystemFont.css" | relURL }}"/>
+  <link rel="stylesheet" href="{{ "css/reset.css" | relURL }}"/>
+  <link rel="stylesheet" href="{{ "css/smigle.css" | relURL }}"/>
+  {{ range .Site.Params.customStylesheets }}
+    <link rel="stylesheet" href="{{ . | relURL }}"/>
+  {{ end }}
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+  <meta name="msapplication-TileColor" content="#da532c">
+  <meta name="theme-color" content="#ffffff">
+  {{- with .Site.Params.seo.baidutj }}
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?{{ . }}";
+      var s = document.getElementsByTagName("script")[0]; 
+      s.parentNode.insertBefore(hm, s);
+    })();
+    </script>
+    {{ end -}}
+    {{- with .Site.Params.seo.googleanalytics }}
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ . }}"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', '{{ . }}');
+    </script>
+    {{ end -}}
+</head>
