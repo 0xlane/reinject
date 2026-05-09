@@ -7,6 +7,17 @@
 .lang-switch:hover {
   opacity: 1;
 }
+.lang-short { display: none; }
+
+.phone-nav .lang-full { display: none; }
+.phone-nav .lang-short {
+  display: inline;
+  font-family: "Symbols Nerd Font", monospace;
+  margin: 0;
+}
+.phone-nav .lang-switch {
+  font-size: 20px;
+}
 .ai-disclaimer {
   margin-top: 2em;
   border-color: #e6a817;

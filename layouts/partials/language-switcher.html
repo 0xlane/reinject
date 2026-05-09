@@ -1,11 +1,17 @@
 {{ if .IsTranslated }}
   {{ range .Translations }}
-    <a href="{{ .RelPermalink }}" class="lang-switch" title="{{ .Language.LanguageName }}">{{ .Language.LanguageName }}</a>
+    <a href="{{ .RelPermalink }}" class="lang-switch" title="{{ .Language.LanguageName }}">
+      <span class="lang-full">{{ .Language.LanguageName }}</span>
+      <span class="lang-short">&#xf1ab;</span>
+    </a>
   {{ end }}
 {{ else }}
   {{ range .Site.Home.AllTranslations }}
     {{ if ne .Language.Lang $.Site.Language.Lang }}
-      <a href="{{ .RelPermalink }}" class="lang-switch" title="{{ .Language.LanguageName }}">{{ .Language.LanguageName }}</a>
+      <a href="{{ .RelPermalink }}" class="lang-switch" title="{{ .Language.LanguageName }}">
+        <span class="lang-full">{{ .Language.LanguageName }}</span>
+        <span class="lang-short">&#xf1ab;</span>
+      </a>
     {{ end }}
   {{ end }}
 {{ end }}
