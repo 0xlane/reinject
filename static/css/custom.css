@@ -1,0 +1,22 @@
+.lang-switch {
+  font-weight: bold;
+  text-decoration: none;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.lang-switch:hover {
+  opacity: 1;
+}
+.ai-disclaimer {
+  margin-top: 2em;
+  border-color: #e6a817;
+  opacity: 0.85;
+  font-size: 0.9em;
+}
+.ai-disclaimer legend {
+  color: #e6a817;
+}
+.ai-disclaimer p {
+  margin: 0.5em 0;
+  line-height: 1.6;
+}

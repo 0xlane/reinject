@@ -4,7 +4,7 @@ date: 2025-01-16T16:46:56+08:00
 lastmod: 2025-01-21T17:30:55+08:00
 type: posts
 draft: false
-summary: 本文总结一下 unsortedbin 相关的利用方式，包括泄漏 libc 地址、UAF 任意地址写的利用示例。
+summary: This article summarizes exploitation techniques related to the unsortedbin, including leaking libc addresses and UAF arbitrary address write examples.
 categories:
   - CTF-PWN
 tags:
@@ -16,19 +16,19 @@ tags:
   - heap
 ---
 
-这篇记录下和 unsortedbin 相关的内容。未排序其实就是未归类，其他 bin 都是有固定大小或范围的，归类到对应 bin 上就相当于按大小排序了。 
+This post covers content related to the unsortedbin. "Unsorted" essentially means "uncategorized" — other bins have fixed sizes or ranges, and categorizing chunks into the corresponding bin is effectively sorting them by size.
 
-之前在 [glibc malloc/free 源码分析]({{< relref "/posts/CTF-PWN/heap/glibc/glibc_malloc_free_source_analysis" >}}) 中比较详细地分析过内存分配、释放的过程，malloc 按 exact-fit 优先原则进行分配，即优先找已有的相同大小 chunk，否则归类 unsortedbin 中的 chunk，同时再进行 exact-fit 匹配找到最合适的，归类后扔没有大小正好合适的就对稍大的 chunk 切割，切割后的 chunk 会被再次放到 unsortedbin 上。
+Previously in [glibc malloc/free Source Code Analysis]({{< relref "/posts/CTF-PWN/heap/glibc/glibc_malloc_free_source_analysis" >}}), I analyzed the memory allocation and deallocation process in detail. `malloc` allocates based on an exact-fit priority principle: it first looks for an existing chunk of the same size, otherwise it categorizes chunks in the unsortedbin while performing exact-fit matching to find the best one. After categorization, if no perfectly sized chunk is found, a slightly larger chunk is split, and the remainder is placed back into the unsortedbin.
 
-如果有 tcache，在归类过程中精确匹配到的 chunk 先存储到 tcache 里，到达阀值之后立即返回 chunk，如果没有 tcache 就立即返回 chunk。没有精确匹配的 chunk 会被分类到对应的 bin 上。
+If tcache is available, chunks that are exact-matched during the categorization process are first stored in tcache. Once the threshold is reached, a chunk is immediately returned. Without tcache, the chunk is returned immediately. Chunks that don't exact-match are categorized into their corresponding bins.
 
-排除 tcache 的影响，unsorted chunk 只会被归类到 smallbin 或 larginbin 上，这块代码不多，直接贴代码看。
+Excluding tcache's influence, unsorted chunks are only categorized into smallbins or largebins. The relevant code is short, so let's look at it directly.
 
-## 归类过程
+## Categorization Process
 
-这里贴的 2.27 版本代码。
+The code shown here is from version 2.27.
 
-### small chunk 归类过程
+### Small Chunk Categorization
 
 ```cpp
 while ((victim = unsorted_chunks (av)->bk) != unsorted_chunks (av))
@@ -67,9 +67,9 @@ while ((victim = unsorted_chunks (av)->bk) != unsorted_chunks (av))
 
 ```
 
-没有什么特殊的，就是将 victim 链到 smallbin 上。
+Nothing special here — it simply links the victim onto the smallbin.
 
-### large chunk 归类过程
+### Large Chunk Categorization
 
 ```cpp
 while ((victim = unsorted_chunks (av)->bk) != unsorted_chunks (av))
@@ -149,21 +149,21 @@ while ((victim = unsorted_chunks (av)->bk) != unsorted_chunks (av))
 }
 ```
 
-largebin 中的 chunk 都是已经按大小排好序的，`fd` 方向是大到小，`bk` 方向是小到大。large chunk 用到了 `fd_nextsize` 和 `bk_nextsize`，这两个指针是用来跳表用的，通过这两个指针可以快速跳过相同大小的 chunk 到达下一个大小的 chunk 位置。
+Chunks in the largebin are already sorted by size: `fd` direction goes from large to small, `bk` direction goes from small to large. Large chunks use `fd_nextsize` and `bk_nextsize` — these two pointers serve as a skip list, allowing quick traversal past chunks of the same size to reach the next different-sized chunk.
 
-largebin 头的 `bk` 指向的 chunk 是当前链表中最小的 chunk，如果需要插入的 chunk 大小比最小的还小，直接插入到 `bin` 和 `bin->bk` 中间。否则延 `fd_nextsize` 方向进行跳表遍历，即从大到小，找到合适的位置插入。
+The largebin head's `bk` points to the smallest chunk in the current linked list. If the chunk to be inserted is smaller than the smallest, it's inserted directly between `bin` and `bin->bk`. Otherwise, traversal proceeds along the `fd_nextsize` direction (large to small) to find the appropriate insertion position.
 
-## 攻击利用
+## Attack Exploitation
 
-以 libc 2.27 版本为利用基础，新版本在后面分析。
+The exploitation examples below are based on libc 2.27. Newer versions are analyzed afterwards.
 
-### UAF 泄漏 libc
+### UAF Leaking libc
 
-由于 bin 的结构：
+Due to the bin structure:
 
 ![bin_link_struct](bin_link_struct.png)
 
-bin 链表的头尾都是指向 `main_arena.bins[i]` 。`main_arena` 被静态存储在 libc 内存的 `.data` 段，所以如果存在 UAF，free 后打印头节点的 `bk` 或尾节点的 `fd` 即可得到 `main_arena` 地址，通过相对偏移即可计算出 libc 地址：
+Both the head and tail of the bin linked list point to `main_arena.bins[i]`. `main_arena` is statically stored in libc's `.data` segment. Therefore, if a UAF vulnerability exists, printing the head node's `bk` or the tail node's `fd` after free reveals the `main_arena` address, from which the libc base address can be calculated via relative offset:
 
 ```cpp
 #include <stdio.h>
@@ -185,15 +185,15 @@ int main()
 }
 ```
 
-这个代码中 `p1` 内存被释放后重用得到了 `main_arena.bins[1]` 地址：
+In this code, after `p1`'s memory is freed and reused, we obtain the `main_arena.bins[1]` address:
 
 ![unsortedbin_uaf_leak_libc_example](unsortedbin_uaf_leak_libc_example.png)
 
-### UAF 任意地址写
+### UAF Arbitrary Address Write
 
-这种方式的利用点是 malloc 触发的 unsorted large chunk 归类过程，只有 large chunk 才可以，需要利用 chunk 插入时的 `bk_nextsize` 和 `fd_nextsize` 指向修正。有两种利用方式：
+This exploitation technique targets the unsorted large chunk categorization process triggered by `malloc`. It only works with large chunks and leverages the `bk_nextsize` and `fd_nextsize` pointer corrections during chunk insertion. There are two exploitation methods:
 
-1. 在 unsorted chunk 大小比最小的 chunk 小时，会执行：
+1. When the unsorted chunk size is smaller than the smallest chunk, the following code executes:
 
     ```cpp
     bck = fwd->bck
@@ -208,9 +208,9 @@ int main()
     bck->fd = victim;
     ```
 
-    可使 `fwd->fd->bk_nextsize = fwd->fd->bk_nextsize->fd_nextsize = victim`、`fwd->bck->fd = victim`。这种情况 `fwd` 不可控，它永远指向 `main_arena.bin[1]`，所以只能是 `fwd->fd` 可控，即最大的 large chunk 可控时可实现将 unsorted chunk 地址写入 `fwd->fd->bk_nextsize + 0x20`。
+    This makes `fwd->fd->bk_nextsize = fwd->fd->bk_nextsize->fd_nextsize = victim` and `fwd->bck->fd = victim`. In this case, `fwd` is uncontrollable — it always points to `main_arena.bin[1]`, so only `fwd->fd` can be controlled. When the largest large chunk is controllable, this allows writing the unsorted chunk address to `fwd->fd->bk_nextsize + 0x20`.
 
-2. 在 unsorted chunk 大小比最小的 chunk 大时，会执行：
+2. When the unsorted chunk size is larger than the smallest chunk, the following code executes:
 
     ```cpp
     bck = fwd->bck
@@ -226,11 +226,11 @@ int main()
     bck->fd = victim;
     ```
 
-    可使 `fwd->fd->bk_nextsize = fwd->fd->bk_nextsize->fd_nextsize = victim`、`fwd->bck->fd = victim`。这种情况 `fwd` 指向前一个 large chunk，如果它可控即可实现将 unsorted chunk 地址写入 `fwd->bk_nextsize + 0x20` 和 `fwd->bck + 0x10`。
+    This makes `fwd->fd->bk_nextsize = fwd->fd->bk_nextsize->fd_nextsize = victim` and `fwd->bck->fd = victim`. In this case, `fwd` points to the previous large chunk. If it's controllable, this allows writing the unsorted chunk address to both `fwd->bk_nextsize + 0x20` and `fwd->bck + 0x10`.
 
-#### 利用1
+#### Exploitation 1
 
-然后我们来测试一下，先制造一下第 1 种情况：
+Let's test by setting up the first scenario:
 
 ```cpp
 #include <stdio.h>
@@ -307,25 +307,25 @@ int main()
 }
 ```
 
-使用 glibc 版本为 2.27，运行结果如下：
+Using glibc version 2.27, the result is as follows:
 
 ![largebin_uaf_arb_addr_write_exp_1](largebin_uaf_arb_addr_write_exp_1.png)
 
-这个示例中布局了 3 个 chunk：
+This example sets up 3 chunks:
 
-- `p1` 是给中间用于避免 chunk 合并的 `malloc` 调用时分隔用的
-- `p2` 后面被作为 largebin 中最小的 chunk，UAF 的原因使之可控，即 `fwd->fd` 可控
-- `p3` 后面被放到 unsortedbin，在下次 `malloc` 调用时将被合并到和 `p2` 相同的 largebin，且满足 unsorted chunk 大小比 largebin 中最小的 chunk 小
+- `p1` is used as a separator to prevent chunk consolidation during intermediate `malloc` calls
+- `p2` later becomes the smallest chunk in the largebin, and due to the UAF vulnerability it's controllable, meaning `fwd->fd` is controllable
+- `p3` is later placed into the unsortedbin, and on the next `malloc` call it will be categorized into the same largebin as `p2`, with the unsorted chunk size being smaller than the smallest chunk in the largebin
 
-当使用 UAF 修改 `p2->bk_nextsize` 为 `&stack_var1 - 0x20` 后，调用 `malloc` 触发 unsortedbin 分类将 unsorted `p3` 地址写入 `fwd->fd->bk_nextsize + 0x20`，`stack_var1` 的值最终被改为 `p3` 的地址。
+After using UAF to modify `p2->bk_nextsize` to `&stack_var1 - 0x20`, calling `malloc` triggers unsortedbin categorization which writes the unsorted `p3` address to `fwd->fd->bk_nextsize + 0x20`, and `stack_var1` is ultimately changed to `p3`'s address.
 
-需要注意 `p2` 和 `p3` 的大小要在同一个 largebin 范围内，且 `p3` 要比 `p2` 小。
+Note that `p2` and `p3` must be within the same largebin range, and `p3` must be smaller than `p2`.
 
-试了下新版本 (2.39-0ubuntu8.3) 也可以用。
+Tested on a newer version (2.39-0ubuntu8.3) and it still works.
 
-#### 利用2
+#### Exploitation 2
 
-对之前的代码稍做修改后，便成了第 2 种情况：
+With slight modifications to the previous code, we get the second scenario:
 
 ```cpp
 #include <stdio.h>
@@ -410,16 +410,16 @@ int main()
 }
 ```
 
-这里要注意的是 `p3` 的大小比 `p2` 大，属于第 2 种利用方式，可以同时修改两个指针为 `p3` 地址：
+Note that `p3` is larger than `p2`, which falls under the second exploitation method. It can simultaneously modify two pointers to `p3`'s address:
 
 ![largebin_uaf_arb_addr_write_exp_2](largebin_uaf_arb_addr_write_exp_2.png)
 
-如果改用新版本 (2.39)，这种方式会失败：
+If using a newer version (2.39), this method will fail:
 
 ![largebin_uaf_arb_addr_write_exp_2_error](largebin_uaf_arb_addr_write_exp_2_error.png)
 
-因为在 2.30 版本 [5b06f53](https://github.com/bminor/glibc/commit/5b06f538c5aee0389ed034f60d90a8884d6d54de) commit 中添加了个 `bk_nextsize` 和 `bk` 的校验：
+This is because a validation check for `bk_nextsize` and `bk` was added in version 2.30 commit [5b06f53](https://github.com/bminor/glibc/commit/5b06f538c5aee0389ed034f60d90a8884d6d54de):
 
 ![exp2_fix_commit](exp2_fix_commit.png)
 
-所以这种方式在 2.30 之后失效，只能用第 1 种方式。使用不同 glibc 版本的编译程序可以简单参考一下 [glibc_all_in_one]({{< relref "/posts/CTF-PWN/heap/glibc/glibc_all_in_one" >}}) 。
+Therefore, this method is ineffective after 2.30, and only the first method can be used. For compiling programs with different glibc versions, refer to [glibc_all_in_one]({{< relref "/posts/CTF-PWN/heap/glibc/glibc_all_in_one" >}}).

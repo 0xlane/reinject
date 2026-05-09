@@ -1,5 +1,5 @@
 ---
-title: "Windows 常见持久化排查思路"
+title: "Windows Common Persistence Backdoor Hunting"
 date: 2022-11-04
 type: posts
 draft: false
@@ -13,46 +13,46 @@ tags:
   - WMI
 ---
 
-一些挖矿勒索还有某些流氓软件，经常利用 计划任务 和 wmi 定时执行无文件后门或劫持浏览器主页，利用 powershell 怎么排查？
+Cryptominers, ransomware, and certain rogue software frequently leverage scheduled tasks and WMI to periodically execute fileless backdoors or hijack browser homepages. How do you investigate these using PowerShell?
 
 <!--more-->
 
-## 常见持久化进程树
+## Common Persistence Process Trees
 
 ```plain
-a. services.exe  服务
-b. svchost.exe -k netsvcs -p -s Schedule/taskeng.exe/dllhost.exe/taskhost.exe   计划任务
-c. WmiPreSE.exe  wmic process create cmd /powershell 横向移动 
-              wmi事件订阅 持久化 cmdline
+a. services.exe  Services
+b. svchost.exe -k netsvcs -p -s Schedule/taskeng.exe/dllhost.exe/taskhost.exe   Scheduled Tasks
+c. WmiPreSE.exe  wmic process create cmd/powershell lateral movement 
+              WMI event subscription persistence cmdline
 d. scrcons.exe
-              wmi事件订阅 持久化 vbs脚本
+              WMI event subscription persistence vbs scripts
 ```
 
-## 计划任务
+## Scheduled Tasks
 
-一般的计划任务，名字比较固定，或者就放在根路径，不需要花里胡哨的东西，直接到 taskschd.msc 里找。
+For typical scheduled tasks with fixed names or those placed in the root path, no fancy techniques are needed — just look in taskschd.msc.
 
-如果藏得比较深又比较多，懒得找，或者计划任务名字随机的，又或者修改了当前已有的计划任务启动命令为恶意命令，利用 powershell 会让这个事情变简单一些。
+If tasks are deeply hidden, numerous, have random names, or if existing scheduled tasks have had their launch commands modified to malicious commands, PowerShell can simplify the investigation.
 
-以执行程序作为过滤条件，例如过滤出执行 powershell 的计划任务（低版本没有 Get-ScheduledTask cmdlet）：
+Filter by executed program — for example, find scheduled tasks that execute PowerShell (older versions don't have the Get-ScheduledTask cmdlet):
 
 ```powershell
 Get-ScheduledTask | ?{$_.Actions.execute -imatch ".*?powershell.exe['`"]?$" } | %{[PSCustomObject]@{name = $_.taskname; path = $_.taskpath; exe = $_.Actions.execute; cmdline = $_.Actions.arguments; user = $_.Principal.UserId}} | Format-Table
 ```
 
-以任务状态作为过滤条件，查找所有运行中的任务（低版本没有 Get-ScheduledTask cmdlet）：
+Filter by task state — find all running tasks (older versions don't have the Get-ScheduledTask cmdlet):
 
 ```powershell
 Get-ScheduledTask | ?{$_.State -imatch "running" } | %{[PSCustomObject]@{name = $_.taskname; path = $_.taskpath; exe = $_.Actions.execute; cmdline = $_.Actions.arguments; user = $_.Principal.UserId; status = $_.State}} | ft
 ```
 
-遇到 [深入理解 Windows 计划任务及其恶意隐藏方式探究]({{< relref "/posts/Windows-Security/persistence/windows_schedule_task_internal" >}}) 中提到的任务隐藏姿势，上面的命令查不到，可以通过注册表筛选计划任务会显示更全一些，比如筛选出所有执行 powershell 的任务（2008不可以用）：
+For the task hiding technique mentioned in [Deep Dive into Windows Scheduled Tasks and Malicious Hiding Techniques]({{< relref "/posts/Windows-Security/persistence/windows_schedule_task_internal" >}}), the above commands won't find the tasks. Filtering scheduled tasks through the registry reveals more complete results — for example, find all tasks that execute PowerShell (not compatible with Server 2008):
 
 ```powershell
 Get-ChildItem -Recurse -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tree\' | ?{ $_.Property -contains "Id" } | Get-ItemProperty | %{$actions = (Get-ItemProperty -Path ('HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tasks\'+$_.Id) -ea 0).Actions;if($actions){$actions = [System.Text.Encoding]::Unicode.GetString($actions, 0, $actions.Length)}; [PSCustomObject]@{name = $_.PSChildName; path = ($_.PSPath -replace '.*?\\TaskCache\\Tree\\',''); id = $_.Id; index = $_.Index; actions = ($actions -replace "[^a-z0-9A-Z:\\\._ %$\/'""]",'')}} | ?{$_.actions -imatch '.*?powershell.*?'}
 ```
 
-如果已经有恶意进程的 PID，想找到与之对应的计划任务项是哪个，可以通过 COM 接口来查：
+If you already have the PID of a malicious process and want to find the corresponding scheduled task, you can query through the COM interface:
 
 ```powershell
 # Evil PID
@@ -71,7 +71,7 @@ $runningTasks = $TaskService.GetRunningTasks(1)
 $runningTasks | Where-Object{$_.EnginePID -eq $ePid} | Select-Object -ExpandProperty Path
 ```
 
-其他查找恶意计划任务的命令：
+Other commands for finding malicious scheduled tasks:
 
 ```powershell
 # Search TaskCache Tasks
@@ -84,58 +84,58 @@ Get-ChildItem -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule
 GWMI -Namespace Root/Microsoft/Windows/TaskScheduler -class MSFT_ScheduledTask -Recurse | ?{$_.TaskName -imatch "Bluetool"}
 ```
 
-从注册表中找到包含恶意动作的计划任务注册表项，可查隐藏计划任务（win8以上适用）：
+Find scheduled task registry entries containing malicious actions — can detect hidden scheduled tasks (applicable for Win8 and above):
 
 ```powershell
 Get-ChildItem -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tasks\'| %{$item = ($_|Get-ItemProperty); $actions = $item.Actions; if($actions){$actions = [System.Text.Encoding]::Unicode.GetString($actions, 0, $actions.Length)}; [PSCustomObject]@{name = $_.PSChildName; path = $item.Path; actions = ($actions -replace "[^a-z0-9A-Z:\\\._ %$\/'""]",'')}} |  ?{$_.actions -imatch '.*?(notepad|calc|powershell|wmic|regsvr).*?'}
 ```
 
-win 2008 r2 比较比较老的系统中查找恶意计划任务（如果是排查隐藏任务建议system权限运行）：
+For older systems like Win 2008 R2 — find malicious scheduled tasks (run as SYSTEM if investigating hidden tasks):
 
 ```powershell
 schtasks.exe /query /v /fo csv |convertfrom-csv | select @{ label = "ComputerName"; expression = { $computername } }, @{ label = "Name"; expression = { $_.TaskName } }, @{ label = "Action"; expression = {$_."Task To Run"} }, @{ label = "LastRunTime"; expression = {$_."Last Run Time"} }, @{ label = "NextRunTime"; expression = {$_."Next Run Time"} }, "Status", "Author"|?{$_.action -imatch "http|wmic|regsvr|powershell"}|%{echo $_.Name}
 ```
 
-win 2008 r2 比较老的系统中查找并清理残留的计划任务注册表项（system权限运行，不要在win8以上版本运行会误删）：
+For older systems like Win 2008 R2 — find and clean up residual scheduled task registry entries (run as SYSTEM; do NOT run on Win8+ as it may cause false deletions):
 
 ```powershell
 Get-ChildItem -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tasks\'| %{$item = ($_|Get-ItemProperty); $actions = $item.Actions; if($actions){$actions = [System.Text.Encoding]::Unicode.GetString($actions, 0, $actions.Length)}; [PSCustomObject]@{name = $_.PSChildName; path = $item.Path; actions = ($actions -replace "[^a-z0-9A-Z:\\\._ %$\/'""]",'')}} |%{if (-not(test-path -path (join-path "C:\Windows\System32\Tasks" $_.path) -PathType Leaf)) { remove-item -force -path (join-path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tree\' $_.path)  -erroraction SilentlyContinue; remove-item -force -path (join-path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tasks\' $_.name) -erroraction SilentlyContinue;echo $_};}
 ```
 
-win 2008 r2 比较老的系统中查找残留的计划任务注册表项（不建议在win8以上系统使用）：
+For older systems like Win 2008 R2 — find residual scheduled task registry entries (not recommended for Win8+ systems):
 
 ```powershell
 Get-ChildItem -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tasks\'| %{$item = ($_|Get-ItemProperty); $actions = $item.Actions; if($actions){$actions = [System.Text.Encoding]::Unicode.GetString($actions, 0, $actions.Length)}; [PSCustomObject]@{name = $_.PSChildName; path = $item.Path; actions = ($actions -replace "[^a-z0-9A-Z:\\\._ %$\/'""]",'')}} |%{if (-not(test-path -path (join-path "C:\Windows\System32\Tasks" $_.path) -PathType Leaf)) {echo $_.path};}
 ```
 
-win10 以上批量清理任务动作为*/temp/*.exe这个模式的计划任务：（清理前先在regedit中导出HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache备份）
+For Win10+ — batch clean scheduled tasks with actions matching the */temp/*.exe pattern (back up the registry at `HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache` in regedit before cleaning):
 
 ```powershell
 Get-ChildItem -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tasks\'| %{$item = ($_|Get-ItemProperty); $actions = $item.Actions; if($actions){$actions = [System.Text.Encoding]::Unicode.GetString($actions, 0, $actions.Length)}; [PSCustomObject]@{name = $_.PSChildName; path = $item.Path; actions = ($actions -replace "[^a-z0-9A-Z:\\\._ %$\/'""]",'')}}|?{$_.actions -ilike "*\temp\*.exe"}|?{$_.name -ne '' -or $_.path -ne ''}|%{remove-item -Force -Recurse "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tasks\$($_.name)";Remove-Item -Force -Recurse "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tree$($_.path)"}
 ```
 
-如果已经确定存在恶意计划任务，但是通过以上这些手段就是找不到怎么办（当然前提是你会用这些命令），我建议你想办法重启服务器，如果没办法重启服务器，使用 psexec 切换到 system 账户重启 Task Schedule 服务也可以。
+If you've confirmed a malicious scheduled task exists but can't find it through any of the above methods (assuming you know how to use these commands), I recommend restarting the server if possible. If you can't restart the server, use psexec to switch to the SYSTEM account and restart the Task Schedule service.
 
-> 快速获取SYSTEM权限交互式cmd终端：
+> Quick way to get a SYSTEM-privilege interactive cmd terminal:
 >
 > ```cmd
 > sc create testsvc binpath= "cmd /K start" type= own type= interact
 > sc start testsvc
 > ```
 
-## 服务
+## Services
 
-寻找可疑的服务项：
+Find suspicious service entries:
 
 ```powershell
 Get-ChildItem -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\'| %{$item = ($_|Get-ItemProperty); $actions = $item.ImagePath; if ($actions -imatch "wmic|http|powershell|cmd|notepad|ProgramData|Download|rundll32|regsvr") {echo $_;}}
 ```
 
-## WMI 事件订阅
+## WMI Event Subscriptions
 
-这里先给几个测试用例：
+Here are some test cases first:
 
-用例1：1小时启动一次 notepad
+Test case 1: Launch notepad every hour
 
 ```powershell
 $filterName = 'BotFilter82'
@@ -147,7 +147,7 @@ $WMIEventConsumer = Set-WmiInstance -Class CommandLineEventConsumer -Namespace "
 Set-WmiInstance -Class __FilterToConsumerBinding -Namespace "root\subscription" -Arguments @{Filter=$WMIEventFilter;Consumer=$WMIEventConsumer}
 ```
 
-用例2：1小时执行一次用来远程下载的脚本
+Test case 2: Execute a remote download script every hour
 
 ```powershell
 $filterName = 'filtP1'
@@ -159,11 +159,11 @@ $WMIEventConsumer = Set-WmiInstance -Class ActiveScriptEventConsumer -Namespace 
 Set-WmiInstance -Class __FilterToConsumerBinding -Namespace "root\subscription" -Arguments @{Filter=$WMIEventFilter;Consumer=$WMIEventConsumer}
 ```
 
-### 排查思路 1
+### Investigation Approach 1
 
-适合已知 `__EventFilter` 的某些特征，例如 Query 语句，或者 Name。
+Suitable when certain characteristics of the `__EventFilter` are known, such as the Query statement or Name.
 
-根据 Query 查询 `__EventFilter：`
+Query `__EventFilter` based on Query:
 
 ```powershell
 $a = Get-WmiObject -Namespace root\subscription -Class __EventFilter -Filter "Query LIKE '%Win32_PerfFormattedData_PerfOS_System%'"
@@ -171,7 +171,7 @@ $a = Get-WmiObject -Namespace root\subscription -Class __EventFilter -Filter "Qu
 
 ![wmi_hunting_idea1_1](wmi_hunting_idea1_1.png)
 
-根据 `__EventFilter` 查询 `__FilterToConsumerBinding：`
+Query `__FilterToConsumerBinding` based on `__EventFilter`:
 
 ```powershell
 $b = Get-WmiObject -Namespace root\subscription -Class __FilterToConsumerBinding | ?{$_.Filter -match ($a.name -join '|')}
@@ -179,7 +179,7 @@ $b = Get-WmiObject -Namespace root\subscription -Class __FilterToConsumerBinding
 
 ![wmi_hunting_idea1_2](wmi_hunting_idea1_2.png)
 
-根据 `__FilterToConsomerBinding` 查询 `__EventConsumer：`
+Query `__EventConsumer` based on `__FilterToConsumerBinding`:
 
 ```powershell
 $b | %{Get-WmiObject -Namespace root\subscription -Class __EventConsumer -Filter "__RELPATH = '$($_.Consumer)'"}
@@ -191,19 +191,19 @@ $b | %{[wmi]"$($_.__NAMESPACE):$($_.Consumer)"}
 
 ![wmi_hunting_idea1_3](wmi_hunting_idea1_3.png)
 
-### 排查思路 2
+### Investigation Approach 2
 
-适合一切未知，想排查一下恶意软件是否利用 wmi 事件进行了持久化。
+Suitable when everything is unknown and you want to check whether malware has used WMI events for persistence.
 
-持久化，必然需要创建三个类对象：`__EventFilter`、`__FilterToConsumerBinding`、`__EventConsumer`，其中 `__EventFilter` 定义了事件过滤查询的语句（比如每 10s 查询一次名为 ss 的服务），`__FilterToConsumerBinding` 负责将 `__EventConsumer` 和 `__EventFilter` 绑定，Filter 负责提供数据，Consumer 负责指定消费数据的动作。
+For persistence, three class objects must be created: `__EventFilter`, `__FilterToConsumerBinding`, and `__EventConsumer`. `__EventFilter` defines the event filter query statement (e.g., query a service named ss every 10 seconds). `__FilterToConsumerBinding` binds `__EventConsumer` and `__EventFilter` together — the Filter provides data, and the Consumer specifies the action to consume the data.
 
-`__EventConsumer` 根据 [MSDN](https://docs.microsoft.com/en-us/windows/win32/wmisdk/standard-consumer-classes) 可知，有 5 种：`ActiveScriptEventConsumer`、`CommandLineEventConsumer`、`LogFileEventConsumer`、`NTEventLogEventConsumer`、`SMTPEventConsumer`。
+According to [MSDN](https://docs.microsoft.com/en-us/windows/win32/wmisdk/standard-consumer-classes), `__EventConsumer` has 5 types: `ActiveScriptEventConsumer`, `CommandLineEventConsumer`, `LogFileEventConsumer`, `NTEventLogEventConsumer`, and `SMTPEventConsumer`.
 
-`ActiveScriptEventConsumer` 可以指定当 Filter 中的事件被触发时执行一个预定义的 vbs 脚本，而 `CommandLineEventConsumer` 可以指定事件触发时启动的进程命令行。这两个 Consumer 经常被用来做持久化。
+`ActiveScriptEventConsumer` can specify a predefined VBS script to execute when the Filter's event is triggered, while `CommandLineEventConsumer` can specify the process command line to launch when the event triggers. These two Consumers are frequently used for persistence.
 
-所以可以直接排查注册的 `ActiveScriptEventConsumer` 和 `CommandLineEventConsumer`，排查是否有持久化动作。
+So you can directly investigate registered `ActiveScriptEventConsumer` and `CommandLineEventConsumer` instances to check for persistence activity.
 
-根据一些脚本或命令行特征，查询 `__EventConsumer`：
+Query `__EventConsumer` based on script or command line characteristics:
 
 ```powershell
 $a = Get-WmiObject -Namespace root\subscription -Class __EventConsumer | ?{($_.ScriptText -imatch 'GetObject.*?http') -or ($_.CommandLineTemplate -imatch 'notepad|powershell|cmd')}
@@ -211,7 +211,7 @@ $a = Get-WmiObject -Namespace root\subscription -Class __EventConsumer | ?{($_.S
 
 ![wmi_hunting_idea2_1](wmi_hunting_idea2_1.png)
 
-根据查询到的 __EventConsumer 查询 __FilterToConsomerBinding：
+Query `__FilterToConsumerBinding` based on the found `__EventConsumer`:
 
 ```powershell
 $b = Get-WmiObject -Namespace root\subscription -Class __FilterToConsumerBinding | ?{$_.Consumer -match ($a.name -join '|')}
@@ -219,7 +219,7 @@ $b = Get-WmiObject -Namespace root\subscription -Class __FilterToConsumerBinding
 
 ![wmi_hunting_idea2_2](wmi_hunting_idea2_2.png)
 
-根据查询到的 `__FilterToConsomerBinding` 查询 `__EventFilter`：
+Query `__EventFilter` based on the found `__FilterToConsumerBinding`:
 
 ```powershell
 $b | %{Get-WmiObject -Namespace root\subscription -Class __EventFilter -Filter "__RELPATH = '$($_.Filter)'"}

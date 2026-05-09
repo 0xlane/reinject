@@ -1,7 +1,7 @@
 ---
 title: About
 layout: default
-_build:
+build:
   list: never
 ---
 

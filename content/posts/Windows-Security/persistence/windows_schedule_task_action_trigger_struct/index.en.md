@@ -1,5 +1,5 @@
 ---
-title: "注册表中计划任务的 Triggers、Actions 内容结构研究"
+title: "Research on Triggers and Actions Data Structures of Scheduled Tasks in the Registry"
 date: 2024-01-16
 type: posts
 draft: false
@@ -13,15 +13,15 @@ tags:
   - internal
 ---
 
-win7计划任务里没有schtasks，而是旧的 at 命令，以文件形式表示，win8开始出现有 schtasks.exe 命令即现在的计划任务服务。
+Win7 scheduled tasks didn't have schtasks but used the legacy `at` command, represented as files. Starting from Win8, the `schtasks.exe` command appeared — the modern scheduled task service.
 
-之前在 [深入理解 Windows 计划任务及其恶意隐藏方式探究]({{< relref "/posts/Windows-Security/persistence/windows_schedule_task_internal" >}}) 中描述了注册表中一些字段的大概含义，但是没有研究具体字段的内容结构，尤其是二进制表示的 Triggers、Actions 等字段。
+Previously in [Deep Dive into Windows Scheduled Tasks and Malicious Hiding Techniques]({{< relref "/posts/Windows-Security/persistence/windows_schedule_task_internal" >}}), I described the general meaning of some fields in the registry but didn't research the specific content structures, especially the binary Triggers, Actions, and other fields.
 
-通过参考公开资料和 [GhostTask](https://github.com/netero1010/GhostTask/) 项目，大概梳理了一下 win8.1 和 win10 上 Triggers 和 Actions 结构的区别，后面可能有用。
+By referencing public materials and the [GhostTask](https://github.com/netero1010/GhostTask/) project, I roughly outlined the differences in Triggers and Actions structures between Win8.1 and Win10, which may be useful later.
 
 <!--more-->
 
-Actions：
+Actions:
 
 ```plain
 // win8.1 Actions
@@ -49,7 +49,7 @@ Actions：
 00,00               // flag
 ```
 
-Triggers：
+Triggers:
 
 ```plain
 // win8.1 Triggers
@@ -208,11 +208,11 @@ e9,bd,
 00,00,00,00,48,48,48,48     // triggerId
 ```
 
-DynamicInfo：
+DynamicInfo:
 
 ```plain
-// win8.1 和 win10 的 DynamicInfo 结构没有区别
-// win8.1 上 DynamicInfo 字段内容不会自动变更实际没用
+// DynamicInfo structure is the same between win8.1 and win10
+// On win8.1, the DynamicInfo field content is not auto-updated and is effectively unused
 03,00,00,00,                    // magic
 d0,2b,41,20,e8,10,da,01,        // createTime
 00,00,00,00,00,00,00,00,        // lastRunTime
@@ -221,15 +221,15 @@ d0,2b,41,20,e8,10,da,01,        // createTime
 00,00,00,00,00,00,00,00         // ftLastSuccessfulRun
 ```
 
-一些 tips：
+Some tips:
 
-- win8 计划任务主要依赖 xml 文件，注册表是备份，任务运行都不能少
-- win10 计划任务完全依赖注册表，xml 文件可有可无
-- 通过注册表创建计划任务后，需要手动重启 Schedule 服务重新加载任务后生效
-- 测试发现通过修改 SD 也可以达到隐藏任务的目的，之前是直接删除这个字段
-- 任务最小执行间隔小于 60s，会出现 xml 格式错误的报错信息
-- 需要 SYSTEM 权限，或者用管理员权限获取相关注册表所有权
+- Win8 scheduled tasks primarily rely on XML files; the registry is a backup — both are needed for task execution
+- Win10 scheduled tasks depend entirely on the registry; XML files are optional
+- After creating a scheduled task via the registry, the Schedule service must be manually restarted to reload and activate the task
+- Testing found that modifying the SD can also hide tasks — previously, the field was simply deleted
+- If the minimum execution interval is less than 60s, an XML format error will appear
+- Requires SYSTEM privileges, or administrator privileges to take ownership of the relevant registry keys
 
-检测：
+Detection:
 
-- 非计划任务服务进程(svchost.exe)修改计划任务相关注册表内容或权限
+- Non-Task Scheduler service processes (svchost.exe) modifying scheduled task related registry contents or permissions

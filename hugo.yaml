@@ -1,74 +1,136 @@
 # exampleSite/config.yaml
-baseURL: https://reinject.top/ # Replace with your domain
-languageCode: zh-cn
+baseURL: https://reinject.top/
 theme: smol
 title: REinject's Blog
 enableRobotsTXT: true
+defaultContentLanguage: zh
+defaultContentLanguageInSubdir: false
 outputFormats:
   RSS:
     baseName: "rss"
-menu:
-  main: # Change menu as needed
-    - identifier: home
-      pre: icon-home
-      name: Home
-      url: /
-      weight: 1
-    - identifier: about
-      pre: icon-about
-      name: About
-      url: /about/
-      weight: 2
-    - identifier: posts
-      pre: icon-post
-      name: Posts
-      url: /posts/
-      weight: 3
-    - identifier: categories
-      pre: icon-category
-      name: Categories
-      url: /categories/
-      weight: 4
-    - identifier: tags
-      pre: icon-tag
-      name: Tags
-      url: /tags/
-      weight: 5
-    - identifier: rss
-      pre: icon-rss
-      name: RSS
-      url: /rss.xml
-      weight: 6
-    - identifier: search
-      pre: "&#xf002;"
-      name: Search
-      url: /search/
-      weight: 7
+
+languages:
+  zh:
+    languageCode: zh-cn
+    languageName: 中文
+    weight: 1
+    title: REinject's Blog
+    params:
+      author: "REinject"
+      description: "REinject 的博客，主要用于记录计算机网络安全相关的内容，侧重于主机侧、二进制、安全工具开发方面。"
+      subtitle: "我们的功夫再棒，也敌不过洋枪"
+      keywords:
+        - 网络安全
+        - CTF
+        - Windows安全
+        - 安全博客
+        - 二进制安全
+        - 安全研究
+        - 主机安全
+        - 入侵检测
+        - 漏洞分析
+        - 攻防对抗
+    menu:
+      main:
+        - identifier: home
+          pre: icon-home
+          name: 首页
+          url: /
+          weight: 1
+        - identifier: about
+          pre: icon-about
+          name: 关于
+          url: /about/
+          weight: 2
+        - identifier: posts
+          pre: icon-post
+          name: 文章
+          url: /posts/
+          weight: 3
+        - identifier: categories
+          pre: icon-category
+          name: 分类
+          url: /categories/
+          weight: 4
+        - identifier: tags
+          pre: icon-tag
+          name: 标签
+          url: /tags/
+          weight: 5
+        - identifier: rss
+          pre: icon-rss
+          name: RSS
+          url: /rss.xml
+          weight: 6
+        - identifier: search
+          pre: "&#xf002;"
+          name: 搜索
+          url: /search/
+          weight: 7
+  en:
+    languageCode: en-us
+    languageName: English
+    weight: 2
+    title: REinject's Blog
+    params:
+      author: "REinject"
+      description: "REinject's blog, focusing on cybersecurity, binary security, and security tool development."
+      subtitle: "No matter how good our kung fu is, it can't beat guns"
+      keywords:
+        - Cybersecurity
+        - CTF
+        - Windows Security
+        - Binary Security
+        - Security Research
+        - Host Security
+        - Intrusion Detection
+        - Vulnerability Analysis
+    menu:
+      main:
+        - identifier: home
+          pre: icon-home
+          name: Home
+          url: /
+          weight: 1
+        - identifier: about
+          pre: icon-about
+          name: About
+          url: /about/
+          weight: 2
+        - identifier: posts
+          pre: icon-post
+          name: Posts
+          url: /posts/
+          weight: 3
+        - identifier: categories
+          pre: icon-category
+          name: Categories
+          url: /categories/
+          weight: 4
+        - identifier: tags
+          pre: icon-tag
+          name: Tags
+          url: /tags/
+          weight: 5
+        - identifier: rss
+          pre: icon-rss
+          name: RSS
+          url: /rss.xml
+          weight: 6
+        - identifier: search
+          pre: "&#xf002;"
+          name: Search
+          url: /search/
+          weight: 7
+
 params:
   abbrDateFmt: "Jan 2"
-  author: "REinject"
-  description: "REinject 的博客，主要用于记录计算机网络安全相关的内容，侧重于主机侧、二进制、安全工具开发方面。"
-  keywords:
-    - 网络安全
-    - CTF
-    - Windows安全
-    - 安全博客
-    - 二进制安全
-    - 安全研究
-    - 主机安全
-    - 入侵检测
-    - 漏洞分析
-    - 攻防对抗
-    - 安全知识
-    - 安全技术
-    - 漏洞文档
-    - 漏洞复现
   dateFmt: "2006-01-02"
   ##
   ## Options for overriding theme or page defaults
   ##
-  #customStylesheets: # Use to override theme styles, like logo size
-  #  - "css/custom.css"
+  customStylesheets:
+    - "css/custom.css"
   #readingSpeed: 600 # Use to set custom reading speed
   #readingSpeedMin: 25 # Use to set custom reading speed range
   #readingSpeedMax: 175 # Use to set custom reading speed range
@@ -81,7 +143,6 @@ params:
       url: https://t.me/stayupgogo
     - name: Vercel
       url: https://reinject.vercel.app
-  subtitle: "我们的功夫再棒，也敌不过洋枪"
   feedback: true
   gitalk:
     enable: false

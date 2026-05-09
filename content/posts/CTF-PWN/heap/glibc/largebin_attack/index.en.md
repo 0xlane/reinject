@@ -3,7 +3,7 @@ title: largebin attack
 date: 2025-01-21T17:33:23+08:00
 type: posts
 draft: false
-summary: 本文总结一下 largebin 相关的攻击利用方式。
+summary: This article summarizes attack exploitation techniques related to the largebin.
 categories:
   - CTF-PWN
 tags:
@@ -14,19 +14,19 @@ tags:
   - heap
 ---
 
-本文内容在 [unsortedbin attack]({{< relref "/posts/CTF-PWN/heap/glibc/unsortedbin_attack" >}}) 中总结过，单独拉出来整理一下。
+The content of this article was previously covered in [unsortedbin attack]({{< relref "/posts/CTF-PWN/heap/glibc/unsortedbin_attack" >}}), extracted here for a standalone summary.
 
-当 chunk 从 unsortedbin 放到 largebin 中时，存在两种利用方式使得修改任意指针内容为 chunk 的地址。
+When a chunk is moved from the unsortedbin to the largebin, there are two exploitation methods that allow modifying arbitrary pointer contents to the chunk's address.
 
-利用时需要布局两个 chunk，一个 chunk 已经在 largebin 中，1个 chunk 还在 unsortedbin 中还未插入 largebin，我将这两个 chunk 分别称做 `p2` 和 `p3`。为了保证 `p3` 插入的 largebin 和 `p2` 是同一个，`p2` 和 `p3` 的大小要在一个 largebin 范围内变换。根据两个 chunk 的大小有不同的利用效果：
+The exploitation requires setting up two chunks: one chunk already in the largebin and one chunk still in the unsortedbin that hasn't been inserted into the largebin yet. I'll refer to these two chunks as `p2` and `p3` respectively. To ensure `p3` is inserted into the same largebin as `p2`, their sizes must vary within the same largebin range. Depending on the relative sizes of the two chunks, different exploitation effects can be achieved:
 
-- `p2` 比 `p3` 小，可修改一个指针内容为 `p3` 地址
-- `p2` 比 `p3` 大，可同时修改两个指针内容为 `p3` 的地址
-- `p2` 和 `p3` 一样大，无法利用
+- `p2` smaller than `p3`: can modify one pointer to `p3`'s address
+- `p2` larger than `p3`: can simultaneously modify two pointers to `p3`'s address
+- `p2` and `p3` same size: not exploitable
 
-利用前提还需要有一个 UAF 洞。使用下面示例分别构造这两种利用场景。
+The exploitation also requires a UAF vulnerability. The following examples demonstrate both exploitation scenarios.
 
-**第 1 种利用：`p2` 比 `p3` 小**
+**Exploitation 1: `p2` smaller than `p3`**
 
 ```cpp
 #include <stdio.h>
@@ -103,23 +103,23 @@ int main()
 }
 ```
 
-使用 glibc 版本为 2.27，运行结果如下：
+Using glibc version 2.27, the result is as follows:
 
 ![largebin_uaf_arb_addr_write_exp_1](largebin_uaf_arb_addr_write_exp_1.png)
 
-这个示例中布局了 3 个 chunk：
+This example sets up 3 chunks:
 
-- `p1` 是给中间用于避免 chunk 合并的 `malloc` 调用时分隔用的
-- `p2` 后面被作为 largebin 中最小的 chunk，UAF 的原因使之可控，即 `fwd->fd` 可控
-- `p3` 后面被放到 unsortedbin，在下次 `malloc` 调用时将被合并到和 `p2` 相同的 largebin，且满足 unsorted chunk 大小比 largebin 中最小的 chunk 小
+- `p1` is used as a separator to prevent chunk consolidation during intermediate `malloc` calls
+- `p2` later becomes the smallest chunk in the largebin, and due to the UAF vulnerability it's controllable, meaning `fwd->fd` is controllable
+- `p3` is later placed into the unsortedbin, and on the next `malloc` call it will be categorized into the same largebin as `p2`, with the unsorted chunk size being smaller than the smallest chunk in the largebin
 
-当使用 UAF 修改 `p2->bk_nextsize` 为 `&stack_var1 - 0x20` 后，调用 `malloc` 触发 unsortedbin 分类将 unsorted `p3` 地址写入 `fwd->fd->bk_nextsize + 0x20`，`stack_var1` 的值最终被改为 `p3` 的地址。
+After using UAF to modify `p2->bk_nextsize` to `&stack_var1 - 0x20`, calling `malloc` triggers unsortedbin categorization which writes the unsorted `p3` address to `fwd->fd->bk_nextsize + 0x20`, and `stack_var1` is ultimately changed to `p3`'s address.
 
-试了下新版本 (2.39-0ubuntu8.3) 也可以用。
+Tested on a newer version (2.39-0ubuntu8.3) and it still works.
 
-**第 2 种利用：`p2` 比 `p3` 大**
+**Exploitation 2: `p2` larger than `p3`**
 
-对之前的代码稍做修改后，便成了第 2 种：
+With slight modifications to the previous code, we get the second scenario:
 
 ```cpp
 #include <stdio.h>
@@ -204,16 +204,16 @@ int main()
 }
 ```
 
-使用 glibc 2.27 版本运行后同时修改 `stack_var1` 和 `stack_var2` 为 `p3` 地址：
+Using glibc 2.27, running it simultaneously modifies `stack_var1` and `stack_var2` to `p3`'s address:
 
 ![largebin_uaf_arb_addr_write_exp_2](largebin_uaf_arb_addr_write_exp_2.png)
 
-如果改用新版本 (2.39)，这种方式会失败：
+If using a newer version (2.39), this method will fail:
 
 ![largebin_uaf_arb_addr_write_exp_2_error](largebin_uaf_arb_addr_write_exp_2_error.png)
 
-因为在 2.30 版本 [5b06f53](https://github.com/bminor/glibc/commit/5b06f538c5aee0389ed034f60d90a8884d6d54de) commit 中添加了个 `bk_nextsize` 和 `bk` 的校验：
+This is because a validation check for `bk_nextsize` and `bk` was added in version 2.30 commit [5b06f53](https://github.com/bminor/glibc/commit/5b06f538c5aee0389ed034f60d90a8884d6d54de):
 
 ![exp2_fix_commit](exp2_fix_commit.png)
 
-所以这种方式在 2.30 之后失效，只能用第 1 种方式。使用不同 glibc 版本的编译程序可以简单参考一下 [glibc_all_in_one]({{< relref "/posts/CTF-PWN/heap/glibc/glibc_all_in_one" >}}) 。
+Therefore, this method is ineffective after 2.30, and only the first method can be used. For compiling programs with different glibc versions, refer to [glibc_all_in_one]({{< relref "/posts/CTF-PWN/heap/glibc/glibc_all_in_one" >}}).

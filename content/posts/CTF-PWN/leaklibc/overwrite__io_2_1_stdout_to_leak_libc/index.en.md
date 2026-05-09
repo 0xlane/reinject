@@ -1,5 +1,5 @@
 ---
-title: "覆盖 _IO_2_1_stdout 泄漏 libc 地址"
+title: "Overwriting _IO_2_1_stdout to Leak libc Address"
 date: 2025-01-08
 type: posts
 draft: false
@@ -13,13 +13,13 @@ tags:
   - _io_2_1_stdout
 ---
 
-PWN 类型的题基本上都需要用到 libc 的地址，一般情况可以通过获取程序 GOT 表填充的 libc API 地址通过相对偏移计算出 libc 基址。但是也有时候没办法直接读 GOT，这时候如果可以实现任意位置写，那通过覆盖 `_IO_2_1_stdout` 的方式就可以泄漏 libc 地址。
+PWN challenges almost always require the libc base address. Typically, you can obtain it by reading a libc API address filled in the program's GOT table and calculating the base via relative offset. However, sometimes you can't directly read the GOT. In such cases, if you have an arbitrary write primitive, you can leak the libc address by overwriting `_IO_2_1_stdout`.
 
-操作上比较简单，直接把 `_IO_2_1_stdout` 结构开头的 `flag` 置为 `0x00000000fbad1800`，并将 `_IO_write_base` 低字节位改小，然后等着程序调用 `puts`、 `printf` 函数即可将 libc 地址泄漏到标准输出里。
+The operation is fairly straightforward: set the `flag` field at the beginning of the `_IO_2_1_stdout` structure to `0x00000000fbad1800`, modify the low byte of `_IO_write_base` to a smaller value, then wait for the program to call `puts` or `printf` — the libc address will be leaked to stdout.
 
 <!--more-->
 
-还记得学习 C 代码第一课 —— 打印 `Hello, world!` 吗：
+Remember the first lesson in learning C — printing `Hello, world!`:
 
 ```cpp
 #include <stdio.h>
@@ -30,13 +30,13 @@ int main() {
 }
 ```
 
-只需要导入 `stdio.h` 这个头，就可以完成程序的输入输出功能，`stdio.h` 头就是由 glibc 提供的 ([源码](https://github.com/bminor/glibc/blob/a4c414796a4b7464b24f5e13f35042f3b7a2444b/libio/stdio.h))。
+Just by including the `stdio.h` header, you get input/output functionality. The `stdio.h` header is provided by glibc ([source](https://github.com/bminor/glibc/blob/a4c414796a4b7464b24f5e13f35042f3b7a2444b/libio/stdio.h)).
 
-所以就从这个 `printf` 开始了解下为什么可以泄漏 libc 地址吧。
+So let's start from `printf` to understand why this technique can leak the libc address.
 
-因为 `printf` 除了输出字符串，还提供了字符串格式化的功能，内部代码比较多，所以看得时候跳过字符串格式化的部分，只看输出相关（或者从相对简单的 `puts` 开始）。
+Since `printf` provides string formatting in addition to output, its internal code is quite extensive. We'll skip the formatting parts and focus only on the output-related code (or start from the simpler `puts`).
 
-在 [glibc-2.27](https://github.com/bminor/glibc/blob/glibc-2.27/) 中找到 `printf` 的实现代码 [printf.c#L27](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/printf.c#L27)：
+In [glibc-2.27](https://github.com/bminor/glibc/blob/glibc-2.27/), the `printf` implementation is found at [printf.c#L27](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/printf.c#L27):
 
 ```cpp
 int
@@ -53,7 +53,7 @@ __printf (const char *format, ...)
 }
 ```
 
-内部调用 `vfprintf`，在 [vprintf.c#L28](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/vprintf.c#L28) 实现：
+Internally it calls `vfprintf`, implemented in [vprintf.c#L28](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/vprintf.c#L28):
 
 ```cpp
 int
@@ -63,7 +63,7 @@ __vprintf (const char *format, __gnuc_va_list arg)
 }
 ```
 
-从这里可以看到调用了 `vfprintf` 完成字符串格式化操作，并输出到 `stdout`，从名字看就知道是标准输出，基于对 linux 的了解，一个进程的标准输入 (`stdin`)、标准输出 (`stdout`)、标准错误输出 (`stderr`) 分别和文件描述符 (fd) 0、1、2 绑定，在 libc 中找到相关定义在 [stdio.c#L33](https://github.com/bminor/glibc/blob/glibc-2.27/libio/stdio.c#L33)：
+Here we can see it calls `vfprintf` to perform string formatting and outputs to `stdout`. As we know from Linux fundamentals, a process's standard input (`stdin`), standard output (`stdout`), and standard error (`stderr`) are bound to file descriptors (fd) 0, 1, and 2 respectively. The related definitions in libc are found at [stdio.c#L33](https://github.com/bminor/glibc/blob/glibc-2.27/libio/stdio.c#L33):
 
 ```cpp
 _IO_FILE *stdin = (FILE *) &_IO_2_1_stdin_;
@@ -71,7 +71,7 @@ _IO_FILE *stdout = (FILE *) &_IO_2_1_stdout_;
 _IO_FILE *stderr = (FILE *) &_IO_2_1_stderr_;
 ```
 
-在这里看到了熟悉的 `_IO_2_1_stdout_`，从这里可知，`stdout` 是 `_IO_2_1_stdout_` 的指针。关于 `_IO_2_1_stdout_` 的实现在 [stdfiles.c#L53](https://github.com/bminor/glibc/blob/glibc-2.27/libio/stdfiles.c#L53)：
+Here we see the familiar `_IO_2_1_stdout_`. From this, we know that `stdout` is a pointer to `_IO_2_1_stdout_`. The implementation of `_IO_2_1_stdout_` is in [stdfiles.c#L53](https://github.com/bminor/glibc/blob/glibc-2.27/libio/stdfiles.c#L53):
 
 ```cpp
 # define DEF_STDFILE(NAME, FD, CHAIN, FLAGS) \
@@ -86,14 +86,14 @@ DEF_STDFILE(_IO_2_1_stdout_, 1, &_IO_2_1_stdin_, _IO_NO_READS);
 DEF_STDFILE(_IO_2_1_stderr_, 2, &_IO_2_1_stdout_, _IO_NO_READS+_IO_UNBUFFERED);
 ```
 
-后面再来继续分析 `stdout`，先继续看 `vfprintf`，实现位置 [vfprintf.c#L1243](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/vfprintf.c#L1243)，真正的 `printf` 功能实现代码是这个函数里，所以这个函数代码很长就不贴了：
+We'll continue analyzing `stdout` later. First, let's look at `vfprintf`, implemented at [vfprintf.c#L1243](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/vfprintf.c#L1243). This is where the actual `printf` functionality is implemented — the function is very long, so it won't be listed here:
 
 ```cpp
 int
-vfprintf (FILE *s, const CHAR_T *format, va_list ap)     // 记住这里 s = stdout = &_IO_2_1_stdout_
+vfprintf (FILE *s, const CHAR_T *format, va_list ap)     // Remember: s = stdout = &_IO_2_1_stdout_
 ```
 
-通过分析可知该函数实际调用了 [process_arg](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/vfprintf.c#L484)、[process_string_arg](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/vfprintf.c#L948)、[outchar](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/vfprintf.c#L155)、[outstring](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/vfprintf.c#L168) 这四个宏定义完成字符串输出，`process_arg` 和 `process_string_arg` 实际也是调用 `outchar` 和 `outstring`，所以只需要关注 `outchar` 和 `outstring`：
+Analysis reveals that this function uses four macro definitions to accomplish string output: [process_arg](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/vfprintf.c#L484), [process_string_arg](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/vfprintf.c#L948), [outchar](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/vfprintf.c#L155), and [outstring](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/vfprintf.c#L168). Since `process_arg` and `process_string_arg` ultimately call `outchar` and `outstring`, we only need to focus on these two:
 
 ```cpp
 #define    outchar(Ch)                                         \
@@ -129,14 +129,14 @@ vfprintf (FILE *s, const CHAR_T *format, va_list ap)     // 记住这里 s = std
   while (0)
 ```
 
-这两个宏定义通过 [PUTC](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/vfprintf.c#L109) 和 [PUT](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/vfprintf.c#L125) 两个宏定义完成字符、字符串的输出，最终调用的是 `_IO_putc_unlocked` 和 `_IO_sputn`：
+These two macros use [PUTC](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/vfprintf.c#L109) and [PUT](https://github.com/bminor/glibc/blob/glibc-2.27/stdio-common/vfprintf.c#L125) macros for character and string output, ultimately calling `_IO_putc_unlocked` and `_IO_sputn`:
 
 ```cpp
 # define PUTC(C, F)    _IO_putc_unlocked (C, F)            // F = s = stdout = &_IO_2_1_stdout_
 # define PUT(F, S, N)  _IO_sputn ((F), (S), (N))
 ```
 
-`_IO_putc_unlocked` 和 `_IO_sputn` 分别定义在 [libio.h#L411](https://github.com/bminor/glibc/blob/glibc-2.27/libio/bits/libio.h#L411) 和 [libioP.h#L377](https://github.com/bminor/glibc/blob/glibc-2.27/libio/libioP.h#L377) 中，一个对应 `putc`，一个对应 `puts`，弄懂其中一个另外一个也就明白了，`_IO_putc_unlocked` 比较简单，就以这个为切入口：
+`_IO_putc_unlocked` and `_IO_sputn` are defined in [libio.h#L411](https://github.com/bminor/glibc/blob/glibc-2.27/libio/bits/libio.h#L411) and [libioP.h#L377](https://github.com/bminor/glibc/blob/glibc-2.27/libio/libioP.h#L377) respectively — one corresponds to `putc`, the other to `puts`. Understanding one makes the other clear. Since `_IO_putc_unlocked` is simpler, we'll use it as our entry point:
 
 ```cpp
 // putc
@@ -147,7 +147,7 @@ vfprintf (FILE *s, const CHAR_T *format, va_list ap)     // 记住这里 s = std
     : (unsigned char) (*(_fp)->_IO_write_ptr++ = (_ch)))
 ```
 
-这段代码的意思是当 `(_fp)->_IO_write_ptr` 到达 `(_fp)->_IO_write_end` 位置就调用 `__overflow` 刷新缓冲区到文件流，否则将字符 `_ch` 写入到 `_IO_write_ptr` 位置并使之后移。`_IO_write_ptr`、`_IO_write_end` 都是什么，这时候就需要继续分析 `stdout` 结构，前面知道它是 `_IO_2_1_stdout_` 的指针，`_IO_2_1_stdout_` 是一个被声明为 `_IO_FILE_plus` 结构体类型的全局变量：
+This code means: when `(_fp)->_IO_write_ptr` reaches the `(_fp)->_IO_write_end` position, `__overflow` is called to flush the buffer to the file stream. Otherwise, the character `_ch` is written to the `_IO_write_ptr` position and the pointer is advanced. What are `_IO_write_ptr` and `_IO_write_end`? To understand this, we need to analyze the `stdout` structure. We know it's a pointer to `_IO_2_1_stdout_`, which is a global variable declared as the `_IO_FILE_plus` struct type:
 
 ```cpp
 // https://github.com/bminor/glibc/blob/glibc-2.27/libio/bits/libio.h#L320
@@ -238,28 +238,28 @@ struct _IO_jump_t
 };
 ```
 
-`_IO_FILE_plus` 是在 `_IO_FILE` 的基础上扩充了一个类 c++ 的虚函数表字段 `vtable`，所以 `_IO_2_1_stdout_` 经常被统一强转成 `_IO_FILE` 进行参数传递，这时 `((_IO_FILE *)stdout)->_IO_write_ptr` 等价于 `stdout->file._IO_write_ptr`。
+`_IO_FILE_plus` extends `_IO_FILE` with a C++ vtable-like `vtable` field. Therefore, `_IO_2_1_stdout_` is often cast to `_IO_FILE` for parameter passing, where `((_IO_FILE *)stdout)->_IO_write_ptr` is equivalent to `stdout->file._IO_write_ptr`.
 
-然后需要知道这个结构里这些字段的含义：
+Now let's understand the meaning of these fields:
 
-- `_flags`：之前说的要把 `_IO_2_1_stdout_` 开头覆盖为 `0x00000000fbad1800`，其实被覆盖的就是这个字段，它包含了一组位标志，表示文件流的不同状态
-- 一些缓冲区相关的指针
-  - `_IO_read_ptr`：指向当前读取位置
-  - `_IO_read_end`：指向读取结束位置
-  - `_IO_read_base`：指向读取开始位置
-  - `_IO_write_base`：指向写入开始位置
-  - `_IO_write_ptr`：指向当前写入位置
-  - `_IO_write_end`：指向写入结束位置
-  - `_IO_buf_base`：指向缓冲区开始位置
-  - `_IO_buf_end`：指向缓冲区结束位置
+- `_flags`: As mentioned earlier, what we overwrite at the beginning of `_IO_2_1_stdout_` with `0x00000000fbad1800` is this field. It contains a set of bit flags representing different states of the file stream.
+- Buffer-related pointers:
+  - `_IO_read_ptr`: Points to the current read position
+  - `_IO_read_end`: Points to the read end position
+  - `_IO_read_base`: Points to the read start position
+  - `_IO_write_base`: Points to the write start position
+  - `_IO_write_ptr`: Points to the current write position
+  - `_IO_write_end`: Points to the write end position
+  - `_IO_buf_base`: Points to the buffer start position
+  - `_IO_buf_end`: Points to the buffer end position
 
-`_IO_buf_base ~ _IO_buf_end` 表示整个缓冲区范围，`_IO_write_base ~ _IO_write_end` 表示 put 缓冲区范围，`_IO_read_base ~ _IO_read_end` 表示 get 缓冲区范围，对于 `stdout` 来说应该只可能会有 put 缓冲区吧。
+`_IO_buf_base ~ _IO_buf_end` represents the entire buffer range, `_IO_write_base ~ _IO_write_end` represents the put buffer range, and `_IO_read_base ~ _IO_read_end` represents the get buffer range. For `stdout`, only the put buffer should be in use.
 
-前面看到了当 `_IO_write_ptr` 到达 `_IO_write_end` 位置就会调用 `__overflow` 刷新缓冲区，用户输出内容实际是先被写到 `_IO_write_ptr` 指向的位置，最初指向 `_IO_write_base`，随着输出内容的增加，该指针不断向后移动，当到达 `_IO_write_end` 位置则表示 put 缓冲区被填满，这时才会调用 `__overflow` 将 put 缓冲区中的内容全部输出到文件流。
+We saw earlier that when `_IO_write_ptr` reaches `_IO_write_end`, `__overflow` is called to flush the buffer. User output is first written to the position pointed to by `_IO_write_ptr`, which initially points to `_IO_write_base`. As output content increases, this pointer moves forward. When it reaches `_IO_write_end`, the put buffer is full, and `__overflow` is called to flush all put buffer contents to the file stream.
 
-所以把 `_IO_write_base` 改小之后缓冲区变大，就可以使输出内容变多，至于为什么改小就能输出那么多 libc 的地址，这个后面再细究。但是实际上在调用 `__overflow` 时，`_IO_write_base` 的值受 `_flags` 标志位的影响会变动，所以需要通过控制标志位的值使 `_IO_write_base` 在调用 `__overflow` 过程中不被重置。
+So by making `_IO_write_base` smaller, the buffer effectively becomes larger, allowing more content to be output. As for why making it smaller causes so many libc addresses to be output — we'll examine that later. In practice, during the `__overflow` call, the value of `_IO_write_base` may be modified depending on the `_flags` bits. Therefore, we need to control the flags to prevent `_IO_write_base` from being reset during the `__overflow` process.
 
-根据之前 `_IO_2_1_stdout_` 的定义，可知 `vtable` 由 [fileops.c#L1455](https://github.com/bminor/glibc/blob/glibc-2.27/libio/fileops.c#L1455) 中的 `_IO_file_jumps` 提供虚函数实现：
+From the earlier definition of `_IO_2_1_stdout_`, we know that `vtable` is implemented by `_IO_file_jumps` in [fileops.c#L1455](https://github.com/bminor/glibc/blob/glibc-2.27/libio/fileops.c#L1455):
 
 ```cpp
 const struct _IO_jump_t _IO_file_jumps libio_vtable =
@@ -288,7 +288,7 @@ const struct _IO_jump_t _IO_file_jumps libio_vtable =
 libc_hidden_data_def (_IO_file_jumps)
 ```
 
-`__overflow` 对应的实现是 `_IO_file_overflow`，它是 `_IO_new_file_overflow` 函数的别名：
+The `__overflow` implementation is `_IO_file_overflow`, which is an alias for `_IO_new_file_overflow`:
 
 ```cpp
 // https://github.com/bminor/glibc/blob/glibc-2.27/libio/fileops.c#L745
@@ -326,12 +326,12 @@ _IO_new_file_overflow (_IO_FILE *f, int ch)
 libc_hidden_ver (_IO_new_file_overflow, _IO_file_overflow)
 ```
 
-上面只列出了会导致 `_IO_write_base` 被重置的部分，即：
+The above only shows the parts that could cause `_IO_write_base` to be reset:
 
-- `_flags` 不包含 `_IO_NO_WRITES` 函数会直接报错返回
-- `_flags` 不包含 `_IO_CURRENTLY_PUTTING` 函数会修改 `_IO_write_base` 指向 `_IO_buf_base`，也就是缓冲区开头
+- If `_flags` contains `_IO_NO_WRITES`, the function returns an error immediately
+- If `_flags` does not contain `_IO_CURRENTLY_PUTTING`, the function resets `_IO_write_base` to point to `_IO_buf_base` (the buffer start)
 
-最后调用 `_IO_do_write` 完成缓冲区输出，它是 `_IO_new_do_write` 函数的别名，内部调用 `new_do_write`：
+Finally, `_IO_do_write` is called to perform the buffer output. It is an alias for `_IO_new_do_write`, which internally calls `new_do_write`:
 
 ```cpp
 // https://github.com/bminor/glibc/blob/glibc-2.27/libio/fileops.c#L430
@@ -372,19 +372,19 @@ new_do_write (_IO_FILE *fp, const char *data, _IO_size_t to_do)
 }
 ```
 
-函数中调用 `_IO_SYSSEEK` 会改变缓冲区写入文件位置，所以为了排除这个影响，需要使 `_flags & _IO_IS_APPENDING` 或 `fp->_IO_read_end == fp->_IO_write_base` 任一条件成立才能绕过，调用 `_IO_SYSWRITE` 将 put 缓冲区内容输出到标准输出文件流，输出之后 put、get 相关缓冲区指针都会被重置，完成缓冲区刷新操作。
+The `_IO_SYSSEEK` call in this function would change the buffer write position in the file. To avoid this side effect, either `_flags & _IO_IS_APPENDING` or `fp->_IO_read_end == fp->_IO_write_base` must be true to bypass it. `_IO_SYSWRITE` outputs the put buffer contents to the stdout file stream. After output, all put/get buffer pointers are reset, completing the buffer flush operation.
 
-经上可知，为了实现将篡改后 `_IO_write_base` 指向数据能被正确的写入到标准输出，需要使满足下面条件：
+From the above analysis, to correctly write the tampered `_IO_write_base` data to stdout, the following conditions must be met:
 
 - `_flags & _IO_NO_WRITES == _IO_NO_WRITES`
 - `_flags & _IO_CURRENTLY_PUTTING == _IO_CURRENTLY_PUTTING`
-- `_flags & _IO_IS_APPENDING == _IO_IS_APPENDING` 或 `_IO_read_end == _IO_write_base`
+- `_flags & _IO_IS_APPENDING == _IO_IS_APPENDING` or `_IO_read_end == _IO_write_base`
 
-所以使 `_flags = 0x00000000fbad1800` 刚好可以满足上面条件，然后控制 `_IO_write_base` 指针输出原始缓冲区之前的内容即可。
+Therefore, setting `_flags = 0x00000000fbad1800` satisfies all the above conditions. Then by controlling the `_IO_write_base` pointer, we can output the original buffer content preceding it.
 
-然后再来看为什么只需要将 `_IO_write_base` 改向前一些就可以输出 libc 地址，一般是把低位字节置为 0x00。
+Now let's examine why simply moving `_IO_write_base` slightly forward can output libc addresses — typically the low byte is set to 0x00.
 
-这里利用之前的 HelloWorld 代码做个测试，因为满足前面泄漏 libc 的条件，所以不出意外的话输出中包含许多 libc 地址：
+Here we use the HelloWorld code from before as a test. Since it satisfies the libc leak conditions, the output should contain many libc addresses:
 
 ```cpp
 #include <stdio.h>
@@ -398,7 +398,7 @@ int main() {
 }
 ```
 
-用 `g++ main.cpp` 命令编译生成 `a.out`，用这个脚本加载获取返回内容：
+Compile with `g++ main.cpp` to produce `a.out`, then use this script to load and capture the output:
 
 ```python
 from pwn import *
@@ -410,7 +410,7 @@ print(p.recvall())
 # pause()
 ```
 
-输出如下：
+Output:
 
 ```bash
 [+] Starting local process './a.out': pid 14204
@@ -419,16 +419,16 @@ print(p.recvall())
 b'DV\x0e\xed\xe0\x7f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xe0H\x0e\xed\xe0\x7f\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00Hello, world!\n
 ```
 
-能发现正如预期一样，libc 地址泄漏了出来。
+As expected, libc addresses are leaked in the output.
 
-然后去掉 `setvbuf(stdout, 0, 2, 0);` 再试试呢，你会发现打印出来的只是 `Hello, world!`，libc 地址并没有被泄漏。
+Now, what happens if we remove `setvbuf(stdout, 0, 2, 0);`? You'll find that only `Hello, world!` is printed — no libc addresses are leaked.
 
-所以只有在将 put 缓冲区设置为 `NULL` 的时候，才可以泄漏出 libc 地址，这是因为这时候 put 缓冲区相关指针指向的是 `_IO_2_1_stdout_` 中的 `char _shortbuf[1]` 字段，并且 `_IO_2_1_stdout_` 整个结构都是静态存储在 `libc` 的 `.data` 区域，所以此时泄漏的是 `.data` 区域的数据，里面包含很多 libc 地址。
+This is because only when the put buffer is set to `NULL` can libc addresses be leaked. When the buffer is NULL, the put buffer pointers point to the `char _shortbuf[1]` field within the `_IO_2_1_stdout_` structure. Since the entire `_IO_2_1_stdout_` structure is statically stored in libc's `.data` section, the leaked data comes from the `.data` section, which contains many libc addresses.
 
-默认情况下，整个缓冲区大小是 0x400，调用 `malloc` 分配在堆上，所以这时候 `_IO_write_base` 向前改小并不能泄漏 libc 地址。这块就不具体分析了，有兴趣可以看一下源码中 `setbuf` 相关的实现。
+By default, the buffer size is 0x400, allocated on the heap via `malloc`. In this case, making `_IO_write_base` smaller doesn't leak libc addresses. We won't go into the details here — if you're interested, check the `setbuf`-related implementations in the source code.
 
-**最后总结下：除了程序有任意位置写漏洞之外，还需要将 `stdout` 缓冲区设置为 `NULL`，才可以用这种方法泄漏 libc 地址。**
+**In summary: In addition to having an arbitrary write vulnerability, the program must also have `stdout`'s buffer set to `NULL` for this technique to leak libc addresses.**
 
-相关题目：
+Related challenges:
 
 - [ezheap2]({{< relref "/posts/CTF-PWN/writeup/chb2024/ezheap2" >}})

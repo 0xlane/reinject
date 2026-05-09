@@ -1,0 +1,13 @@
+<article class="summary">
+  <a href="{{ .RelPermalink }}">
+    <h1 class="title">{{ .Title }}</h1>
+    {{ with .Params.subtitle }}<h3 class="subtitle">{{ . }}</h3>{{ end }}
+  </a>
+  {{ partial "postMeta.html" . }}
+  <div class="content">
+    <p>{{ .Summary }}</p>
+    {{ if .Truncated }}
+      <a href="{{ .RelPermalink }}">{{ i18n "readMore" }}</a>
+    {{ end }}
+  </div>
+</article>

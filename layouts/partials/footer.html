@@ -1,0 +1,21 @@
+<footer>
+  <hr />
+  {{ if .Site.Params.social }}
+    <p id="social">
+      {{ i18n "findMeAround" }}
+      <br />
+      {{ range $i, $e := .Site.Params.social }}
+        {{ if $i }} | {{ end }}
+        <a href="{{ .url }}" rel="external nofollow" target="_blank">{{ .name }}</a>
+      {{ end }}
+    </p>
+  {{ end }}
+  <p class="copyright">
+    {{ i18n "copyright" }} &copy; {{ now.Format "2006"}}
+    <a href="{{ .Site.Home.RelPermalink }}"><strong>{{ default "Blog Author" .Site.Params.Author }}</strong></a>.
+    {{ i18n "licensedUnder" | safeHTML }}
+  </p>
+  <p class="builtWith">
+    {{ i18n "builtWith" | safeHTML }}
+  </p>
+</footer>

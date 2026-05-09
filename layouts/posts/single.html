@@ -1,0 +1,25 @@
+{{ define "main" }}
+  <main>
+    <article>
+      <h1 class="title">{{ .Title }}</h1>
+      {{ with .Params.subtitle }}<h3 class="subtitle">{{ . }}</h3>{{ end }}
+      {{ partial "postMetaDetailed.html" . }}
+
+      {{- if in .TableOfContents "li" -}}
+      <fieldset class="toc"> 
+        <legend>/* {{ i18n "toc" }} */</legend>
+        {{ .TableOfContents }}
+      </fieldset>
+      {{- end -}}
+
+      <div class="content">{{ .Content }}</div>
+      {{ if .Params.ai_assisted }}
+      <fieldset class="ai-disclaimer">
+        <legend>/* {{ i18n "aiDisclaimerTitle" }} */</legend>
+        <p>{{ i18n "aiDisclaimer" }}</p>
+      </fieldset>
+      {{ end }}
+    </article>
+    {{ partial "gitalk.html" . }}
+  </main>
+{{ end }}

@@ -1,0 +1,35 @@
+<header>
+  <div id="brand">
+    <a class="favicon-icon-link" href="{{ .Site.Home.RelPermalink }}">
+      <img
+        class="favicon-icon"
+        src="{{ default "images/brandIcon.svg" .Site.Params.brandIconFile | relURL }}"
+      />
+    </a>
+    <div class="text">
+      <a href="{{ .Site.Home.RelPermalink }}"><h1>{{ .Site.Title }}</h1></a>
+      <h3>{{ default "Description about Blog Author" .Site.Params.subtitle }}</h3>
+    </div>
+  </div>
+  <nav>
+    <div class="pc-nav">
+    {{ with .Site.Menus.main }}
+      {{ range $index, $value := . }}
+        {{ if $index }}<span class="sep">|</span>{{ end }}
+        <a href="{{ .URL | relLangURL }}"><b>{{ .Name }}</b></a>
+      {{ end }}
+    {{ end }}
+    <span class="sep">|</span>
+    {{ partial "language-switcher.html" . }}
+    </div>
+    <div class="phone-nav">
+      {{- with .Site.Menus.main }}
+        {{- range $index, $value := . }}
+        <a href="{{ .URL | relLangURL }}"><b><span class="icon iconfont {{ .Pre }}"></span></b></a>
+        {{ end -}}
+      {{ end -}}
+      {{ partial "language-switcher.html" . }}
+    </div>
+  </nav>
+  <hr />
+</header>

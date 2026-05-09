@@ -1,0 +1,55 @@
+{{/*
+  Determine the reading time duration
+*/}}
+{{ $duration := "" }}
+{{ $speedSingle := default 1 (.Param "readingspeed") }}
+{{ $speedMin := default 1 (.Param "readingspeedmin") }}
+{{ $speedMax := default 1 (.Param "readingspeedmax") }}
+{{ $durationSingle := math.Max 1 (div .WordCount $speedSingle) }}
+{{ $durationMin := math.Max 1 (div .WordCount $speedMax) }}
+{{ $durationMax := math.Max 1 (div .WordCount $speedMin) }}
+{{ $durationRange := cond
+  (eq $durationMin $durationMax)
+  $durationMin
+  (print $durationMin "-" $durationMax)
+}}
+{{ if .Params.readingSpeedMin | and .Params.readingSpeedMax }}
+  {{ $duration = $durationRange }}
+{{ else if .Params.readingSpeed }}
+  {{ $duration = $durationSingle }}
+{{ else if .Site.Params.readingSpeedMin | and .Site.Params.readingSpeedMax }}
+  {{ $duration = $durationRange }}
+{{ else if .Site.Params.readingSpeed }}
+  {{ $duration = $durationSingle }}
+{{ else }}
+  {{ $duration = .ReadingTime }}
+{{ end }}
+
+<div class="post-meta">
+  <strong>
+    <span>{{ i18n "postedOn" }}</span>
+    <time>{{ .Date.Format (default "2006-01-02 15:04:05" .Site.Params.dateFmt) }}</time>
+    {{ with .Params.categories }}<span>{{ i18n "in" }}</span>{{ end }}
+    {{ range $key, $value := .Params.categories -}}
+      {{- if $key }}, {{ end }}
+      <a href="{{ "/categories/" | relLangURL }}{{ $value | urlize }}">{{ . }}</a>
+    {{- end }}
+  </strong>
+ {{ with .WordCount }}<span> &bull; {{ . }} {{ i18n "words" }}</span>{{ end }}
+ {{ with .ReadingTime}}<span> &bull; {{ $duration }} {{ i18n "minuteRead" }}</span>{{ end }}
+  {{ if and .IsPage (ne .Date .Lastmod) }}
+    <div>
+      {{ i18n "lastUpdatedOn" }}
+      <time>{{ .Lastmod.Format (default "2006-01-02 15:04:05" .Site.Params.dateFmt) }}</time>
+    </div>
+  {{ end }}
+  {{ with .Params.tags }}
+    <div>
+      <span>{{ i18n "tags" }}</span>
+      {{ range $key, $value := . }}
+        {{- if $key }}, {{ end }}
+        <a href="{{ "/tags/" | relLangURL }}{{ $value | urlize }}">{{ . }}</a>
+      {{- end }}
+    </div>
+  {{ end }}
+</div>

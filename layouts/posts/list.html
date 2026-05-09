@@ -1,0 +1,13 @@
+{{ define "main" }}
+  <article id="archive">
+    {{ with .Title }}<h1>{{ . }}</h1>{{ end }}
+    {{ with .Content }}<article><div class="content">{{ . }}</div></article><hr>{{ end }}
+    {{- if .Sections }}
+    <fieldset class="toc"> 
+      <legend>/* {{ i18n "sections" }} */</legend>
+      {{ partial "section.html" . }}
+    </fieldset>
+    {{ end -}}
+    {{ partial "allPostsByDate.html" . }}
+  </main>
+{{ end }}
