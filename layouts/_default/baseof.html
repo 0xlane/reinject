@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="{{ .Site.Language.LanguageCode }}">
+  {{ partial "head.html" . }}
+  <body>
+    <div id="root">
+      {{ partial "header.html" . }}
+      <div id="content">
+        {{ block "main" . }}{{ end }}
+      </div>
+      {{ partial "footer.html" . }}
+    </div>
+    {{ if .Store.Get "hasMermaid" }}
+      <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+      <script>
+        mermaid.initialize({
+          startOnLoad: true,
+          securityLevel: 'loose',
+          theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+        });
+      </script>
+    {{ end }}
+  </body>
+</html>
