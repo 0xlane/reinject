@@ -1,0 +1,13 @@
+{{ if eq .Type "alert" }}
+<div class="callout callout-{{ .AlertType }}">
+  <div class="callout-indicator"></div>
+  <div class="callout-content">
+    <span class="callout-label">[{{ upper .AlertType }}]</span>{{ with .AlertTitle }} <strong class="callout-title">{{ . }}</strong>{{ end }}
+    {{ .Text }}
+  </div>
+</div>
+{{ else }}
+<blockquote>
+  {{ .Text }}
+</blockquote>
+{{ end }}
